@@ -1,0 +1,27 @@
+A játék egy gyorséttermi dolgozó munkáját imitálja, fő célja az információ gyors és
+pontos továbbadása.
+
+● A játék kezdete: Egy sofőr begördül az ablakhoz, majd feladja a rendelést. A Daily
+Deals panelen 5 menü látható, mindegyik egyéni sorszámmal rendelkezik (ezek az
+ajánlatok 5 helyes válasz után cserélődnek). Ezen 5 menüből választ ki a sofőr egyet,
+amelyet megrendel.
+
+● A játék célja: A rendelés sorszámát, bináris számrendszerben, az adott időkorláton
+belül, helyesen továbbítani a konyhára.
+
+● Double trouble: Ebben a játékmódban a rendelések sorszáma minimum 32, és akár
+1023-ig is felmehet, így a játékos két kezet kell használnia. A validálás kacsintással
+történik, a válaszadásra több idő van.
+
+● Reverse: Az eddigiekben 10-es számrendszerből átfordított bináris szám jelentette a
+megoldást. Ez esetben fordítva van: a sofőr rendelésének sorszáma bináris
+számrendszerben van értelmezve, ebben a körben a konyhára decimális
+számrendszerben kell továbbítsuk a rendelt menü sorszámát. A játékos helyenként két
+kezet kell használnia. A validálás kacsintással történik.
+
+● Speedrun: A gyorséttermet a legjobb azzal képviselni, ha bebizonyosul igazi
+gyorsasága. Az alap játékmódbeli idő fele áll csupán rendelkezésre megállapítani a
+helyes bináris formáját a sorszámnak.
+
+● Játék vége: A játék akkor ér véget, ha helytelen számot továbbítottunk a konyhára
+vagy, ha kifutottunk az időből.

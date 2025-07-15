@@ -1,0 +1,249 @@
+import sys
+from PyQt6.QtWidgets import QWidget, QPushButton
+from PyQt6.QtGui import QPainter, QColor, QPalette
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QLabel, QHBoxLayout, QStackedLayout, QFrame
+from PyQt6.QtGui import QIcon, QFont, QPixmap
+from PyQt6.QtCore import QPoint, QTimer
+
+
+from gui.game_scenes.landing_overlays.correct_answer import CorrectAnswerOverlay
+from gui.game_scenes.landing_overlays.incorrect_answer import IncorrectAnswerOverlay
+from gui.game_scenes.landing_overlays.time_is_up import TimeIsUpOverlay
+
+
+class ElaborateAnswer(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Store an explicit reference to the parent widget
+        self._parent_test = parent
+        
+        self.true_code = None
+        self.current_code = None
+        self.remaining_time = None
+        self.current_game_mode = None
+        self.setVisible(False)  # Start hidden
+        
+        # Make sure the widget covers the entire parent
+        if parent:
+            self.resize(parent.screen_width, parent.screen_height)
+        else:
+            self.resize(1280, 960)
+            
+        # Create the overlays - initialize with None for code
+        self.correct_answer_overlay = CorrectAnswerOverlay(parent=self, code=None)
+        self.incorrect_answer_overlay = IncorrectAnswerOverlay(parent=self, true_code=None, current_code = None)
+        self.time_is_up_overlay = TimeIsUpOverlay(parent=self)
+        
+        # Hide the overlays initially
+        self.correct_answer_overlay.hide()
+        self.incorrect_answer_overlay.hide()
+        self.time_is_up_overlay.hide()
+        
+        # Connect overlay signals to slots right at initialization
+        if hasattr(self.correct_answer_overlay, 'continue_game'):
+            self.correct_answer_overlay.continue_game.clicked.connect(self.continue_fn)
+        
+        if hasattr(self.time_is_up_overlay, 'play_again'):
+            self.time_is_up_overlay.play_again.clicked.connect(self.play_again_fn)
+
+        if hasattr(self.incorrect_answer_overlay, 'retry_game'):
+            self.incorrect_answer_overlay.retry_game.clicked.connect(self.retry_game_fn)
+
+        if hasattr(self.incorrect_answer_overlay, 'main_menu') and hasattr(self.time_is_up_overlay, 'main_menu'):
+            self.incorrect_answer_overlay.main_menu.clicked.connect(self.back_to_menu_fn)
+            self.time_is_up_overlay.main_menu.clicked.connect(self.back_to_menu_fn)
+            
+        # Debug output to verify parent initialization
+        print(f"ElaborateAnswer initialized with parent: {self._parent_test}")
+        print(f"Parent has update_orders: {hasattr(self._parent_test, 'update_orders') if self._parent_test else False}")
+
+    def resizeEvent(self, event):
+        """Handle resize events to ensure overlays maintain full coverage"""
+        super().resizeEvent(event)
+        # Resize the overlays
+        self.correct_answer_overlay.resize(self.width(), self.height())
+        self.time_is_up_overlay.resize(self.width(), self.height())
+
+    def update_code_values(self, true_code, current_code, remaining_time, current_game_mode):
+        self.true_code = true_code
+        self.current_code = current_code
+        self.remaining_time = remaining_time
+        if current_game_mode is None:
+            self.current_game_mode = "default"
+        else:
+            self.current_game_mode = current_game_mode
+
+    def shown_code_to_decimal(self, binary_string):
+        # Count how many 1s are there in the binary string
+        decimal_number = binary_string.count('1')
+
+        return decimal_number
+    
+    def binary_array_to_decimal(self, binary_array):
+        decimal = int("".join(str(bit) for bit in binary_array), 2)
+        return decimal
+
+    def elaborate(self, true_code, current_code, remaining_time, current_game_mode):
+        """Check if the current code matches the true code"""
+        self.update_code_values(true_code, current_code, remaining_time, current_game_mode)
+        print(f"Comparing codes - True: {self.true_code}, Current: {self.current_code}" + " - remaining time: " + str(remaining_time))
+        
+        # Make sure both the parent widget and overlays are hidden first
+        self.correct_answer_overlay.hide()
+        self.time_is_up_overlay.hide()
+        self.incorrect_answer_overlay.hide()
+        
+        # Reset positions of overlays
+        self.correct_answer_overlay.move(0, 0)
+        self.time_is_up_overlay.move(0, 0)
+        self.incorrect_answer_overlay.move(0, 0)
+        
+        if self._parent_test and hasattr(self._parent_test, 'toggle_pause'):
+            self._parent_test.toggle_pause()
+
+        # Handle time's up case
+        if remaining_time <= 0:
+            print("Time is up!")
+            self.show()
+            self.raise_()
+            
+            self.time_is_up_overlay.show()
+            self.time_is_up_overlay.raise_()
+            
+            return
+        
+        if self._parent_test.current_game_mode == "reverse":
+            self.current_code = self.shown_code_to_decimal(self.current_code)
+            self.true_code = self.binary_array_to_decimal(self.true_code)
+        # Handle code validation
+        print("LAST CHECK: True: " + str(self.true_code) + " Current: " + str(self.current_code))
+        if self.true_code == self.current_code:
+            print("Correct code!")
+
+            if self._parent_test and hasattr(self._parent_test, 'update_timer'):
+                print("Stopping timer")
+                self._parent_test.update_timer.stop()
+            if hasattr(self._parent_test, 'reset_timer'):
+                self._parent_test.reset_timer()
+                print("Timer reset after correct answer")
+            if self._parent_test and hasattr(self._parent_test, 'correct_answers_count'):
+                self._parent_test.correct_answers_count += 1
+                if hasattr(self._parent_test, 'update_score_display'):
+                    self._parent_test.update_score_display()
+
+            # Update the correct answer overlay with the true code
+            if hasattr(self.correct_answer_overlay, 'update_code'):
+                self.correct_answer_overlay.update_code(self.true_code, current_game_mode)
+                
+            self.show()
+            self.raise_()
+            self.correct_answer_overlay.show()
+            self.correct_answer_overlay.raise_()
+
+        else:
+            print("Incorrect code!")
+            # Update the incorrect answer overlay with both codes
+            if hasattr(self.incorrect_answer_overlay, 'update_code'):
+                self.incorrect_answer_overlay.update_code(self.true_code, self.current_code, current_game_mode)
+                
+            # Show incorrect answer overlay
+            self.show()
+            self.raise_()
+            self.incorrect_answer_overlay.show()
+            self.incorrect_answer_overlay.raise_()
+
+    def continue_fn(self):
+        self.correct_answer_overlay.hide()
+        self.hide()
+        
+        if self._parent_test:
+            # Always ensure we're back to drive-thru scene
+            if self._parent_test.current_scene != "drive_thru":
+                self._parent_test.toggle_scenes()
+        
+            if hasattr(self._parent_test, 'toggle_pause'):
+                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause
+            
+            # Handle order updates based on score
+            if hasattr(self._parent_test, 'update_orders') and hasattr(self._parent_test, 'correct_answers_count'):
+                print("Calling parent's update_orders method via explicit reference")
+                if self._parent_test.correct_answers_count > 1 and self._parent_test.correct_answers_count % 5 == 0:
+                    self._parent_test.update_orders()
+                    self._parent_test.had_active_order = False
+                else: 
+                    self._parent_test.randomize_customer_order()
+                    self._parent_test.had_active_order = False
+        
+    def retry_game_fn(self):
+        self.incorrect_answer_overlay.hide()
+        self.hide()
+        
+        # Try multiple approaches to access the parent
+        if self._parent_test:
+            if hasattr(self._parent_test, 'reset_score_display'):
+                self._parent_test.reset_score_display()
+            if hasattr(self._parent_test, 'toggle_pause'):
+                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause   
+            if hasattr(self._parent_test, 'reset_timer'):
+                self._parent_test.reset_timer()
+
+            if hasattr(self._parent_test, 'set_game_mode'):
+                self._parent_test.set_game_mode(self._parent_test.current_game_mode)
+            if hasattr(self._parent_test, 'update_orders'):
+                print("Calling parent's update_orders method via explicit reference")
+                self._parent_test.update_orders()
+                self._parent_test.had_active_order = False
+            if self._parent_test and hasattr(self._parent_test, 'toggle_scenes'):
+                print("Calling parent's toggle_scenes method via explicit reference")
+                if self._parent_test.current_scene == "kitchen":
+                    self._parent_test.toggle_scenes()
+
+    def play_again_fn(self):
+        self.time_is_up_overlay.hide()
+        self.hide()
+        
+        # Try multiple approaches to access the parent
+        if self._parent_test:
+
+            if hasattr(self._parent_test, 'toggle_pause'):
+                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause
+            
+            if hasattr(self._parent_test, 'reset_timer'):
+                self._parent_test.reset_timer()
+                print("Timer reset after correct answer")
+            if hasattr(self._parent_test, 'update_orders'):
+                print("Calling parent's update_orders method via explicit reference")
+                self._parent_test.update_orders()
+            if hasattr(self._parent_test, 'toggle_scenes'):
+                print("Calling parent's toggle_scenes method via explicit reference")
+                if self._parent_test.current_scene == "kitchen":
+                    self._parent_test.toggle_scenes()
+            if hasattr(self._parent_test, 'update_score_display'):
+                print("Calling parent's update_score_display method via explicit reference")
+                self._parent_test.reset_score_display()
+    
+    def back_to_menu_fn(self):
+        from gui.menu_window import Menu
+        
+        self.time_is_up_overlay.hide()
+        self.incorrect_answer_overlay.hide()
+        self.hide()
+
+        # Try multiple approaches to access the parent
+        if self._parent_test:
+            if hasattr(self._parent_test, 'toggle_pause'):
+                self._parent_test.toggle_pause()
+            if hasattr(self._parent_test, 'reset_timer'):
+                self._parent_test.reset_timer()
+                print("Timer reset after correct answer")
+            if hasattr(self._parent_test, 'reset_score_display'):
+                self._parent_test.reset_score_display()
+            if hasattr(self._parent_test, 'toggle_scenes'):
+                print("Calling parent's toggle_scenes method via explicit reference")
+                if self._parent_test.current_scene == "kitchen":
+                    self._parent_test.toggle_scenes()
+        self.menu = Menu()
+        self.menu.showFullScreen()
+        self._parent_test.close()
+       

@@ -1,0 +1,4 @@
+mediapipe
+PyQt6
+pygame
+opencv-python
