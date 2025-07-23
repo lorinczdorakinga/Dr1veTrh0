@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 
+from src.core.logic.abstract_functions import get_resource_path
+
 class DailyDealsLabel(QLabel):
     def __init__(self, parent=None, current_game_mode=None):
         super().__init__(parent)
@@ -46,9 +48,9 @@ class DailyDealsLabel(QLabel):
     def load_available_images(self):
         """Load all available menu images from the img directory"""
         try:
-            menu_dir = "img/menu"
-            if os.path.exists(menu_dir):
-                self.images_in_file = [img.split('.')[0] for img in os.listdir(menu_dir) 
+            self.menu_dir = get_resource_path("img/menu/")
+            if os.path.exists(self.menu_dir):
+                self.images_in_file = [img.split('.')[0] for img in os.listdir(self.menu_dir) 
                                     if img.endswith(".png")]
             else:
                 self.images_in_file = []
@@ -156,7 +158,8 @@ class DailyDealsLabel(QLabel):
                 
                 # Add the menu image
                 try:
-                    image_path = f"img/menu/{self.images[i]}.png"
+                    image_path = get_resource_path(f"img/menu/")
+                    image_path += "/" + self.images[i] + ".png"
                     menu_image = QPixmap(image_path)
                     
                     if menu_image.isNull():

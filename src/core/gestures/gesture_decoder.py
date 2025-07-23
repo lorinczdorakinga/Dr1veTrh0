@@ -1,6 +1,6 @@
 import mediapipe as mp
-from gesture.landmarks_dictionary import get_hand_landmarks
-from gesture.methods.finger_count import FingerCount
+from src.core.gestures.landmarks_dictionary import get_hand_landmarks
+from src.core.gestures.methods.finger_count import FingerCount
 
 class GestureDecoder():
     def __init__(self):
