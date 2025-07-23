@@ -3,47 +3,50 @@ from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QPixmap, QFont, QPalette, QBrush
 import sys
 
-from gui.game_elements.overlay_button import OverlayButton
-from gui.game_elements.overlay_label import OverlayLabel
-
-from .game_scenes.test import Test
-from .game_scenes.landing_overlays.game_modes import GameModes
-from .game_scenes.landing_overlays.help import Help
+from src.core.logic.abstract_functions import get_resource_path
+from src.components.overlay_button import OverlayButton
+from src.components.overlay_label import OverlayLabel
+from src.scenes.test import Test
+from src.overlays.game_modes import GameModes
+from src.overlays.help import Help
 
 
 class Menu(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
         self.setWindowTitle("Menu")
-        screen = QApplication.primaryScreen()
-        screen_geometry = screen.geometry()
-        self.width = screen_geometry.width()
-        self.height = screen_geometry.height()
+        self.screen = QApplication.primaryScreen()
+        self.screen_geometry = self.screen.geometry()
+        self.width = self.screen_geometry.width()
+        self.height = self.screen_geometry.height()
 
         self.setMinimumSize(self.width, self.height)
         self.showFullScreen()
 
         # Keep track of the current game mode
-        self.current_game_mode = None
+        self.current_game_mode = "default"  # Set default mode initially
 
         # Create the main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
-        main_layout.setSpacing(20)
+        main_layout.setSpacing(int(self.height * 0.02))  # 2% of screen height
 
         # Set background image using palette
         self.resize_background()
 
         # Initialize overlays
         self.game_modes_overlay = GameModes(self)
-        self.help_overlay = Help(self)
+        # Position overlay next to buttons (responsive positioning in game_modes_fn)
+        self.game_modes_overlay.setGeometry(
+            int(self.width * 0.25),  # 25% from left
+            int(self.height *  0.25),  # 25% from top
+            int(self.width * 0.25),  # 25% of screen width
+            int(self.height * 0.6)  # 60% of screen height
+        )
         
-        # Connect game modes signals to update current_game_mode
-        self.game_modes_overlay.default_mode_selected.connect(lambda: self.set_game_mode("default"))
-        self.game_modes_overlay.reverse_mode_selected.connect(lambda: self.set_game_mode("reverse"))
-        self.game_modes_overlay.double_trouble_mode_selected.connect(lambda: self.set_game_mode("double_trouble"))
-        self.game_modes_overlay.speedrun_mode_selected.connect(lambda: self.set_game_mode("speedrun"))
+        # Connect game modes signal to update current_game_mode
+        self.game_modes_overlay.mode_selected.connect(self.set_game_mode)
 
         # Buttons Container Widget with HBoxLayout
         buttons_container = QWidget()
@@ -51,30 +54,33 @@ class Menu(QMainWindow):
 
         # Left spacer to push buttons right
         spacer_widget = QWidget()
-        spacer_widget.setFixedWidth(100)
+        spacer_widget.setFixedWidth(int(self.width * 0.06))  # 6% of screen width
         buttons_layout.addWidget(spacer_widget)
 
         # Buttons Column Container
         buttons_column = QWidget()
         buttons_column_layout = QVBoxLayout(buttons_column)
-        buttons_column_layout.setSpacing(40)
+        buttons_column_layout.setSpacing(int(self.height * 0.04))  # 4% of screen height
 
-        # Create buttons
+        # Create buttons with responsive sizing
+        button_width = int(self.width * 0.2)  # 20% of screen width
+        button_height = int(self.height * 0.08)  # 8% of screen height
+
         self.start = OverlayButton("Start")
         self.start.clicked.connect(self.open_game_fn)
-        self.start.setFixedSize(300, 80)
+        self.start.setFixedSize(button_width, button_height)
 
         self.game_modes_button = OverlayButton("Game Modes")
         self.game_modes_button.clicked.connect(self.game_modes_fn)
-        self.game_modes_button.setFixedSize(300, 80)
+        self.game_modes_button.setFixedSize(button_width, button_height)
 
         self.help = OverlayButton("Help")
         self.help.clicked.connect(self.help_fn)
-        self.help.setFixedSize(300, 80)
+        self.help.setFixedSize(button_width, button_height)
 
         self.quit = OverlayButton("Quit")
         self.quit.clicked.connect(self.quit_fn)
-        self.quit.setFixedSize(300, 80)
+        self.quit.setFixedSize(button_width, button_height)
 
         # Add buttons to the column layout
         buttons_column_layout.addWidget(self.start)
@@ -87,13 +93,17 @@ class Menu(QMainWindow):
         buttons_layout.addWidget(buttons_column, alignment=Qt.AlignmentFlag.AlignLeft)
         buttons_layout.addStretch()
 
-        # Credit label
+        # Credit label with responsive font size
         self.credit = OverlayLabel("")
         self.credit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.credit.setTextColor("black")
         self.credit.setText("Made by Lorincz Dora-Kinga")
+        font = QFont()
+        font.setPointSize(int(self.height * 0.02))  # 2% of screen height
+        self.credit.setFont(font)
 
         self.game_modes_overlay.hide()
+        self.help_overlay = Help(self)
         self.help_overlay.hide()
 
         # Top stretch to push content downward
@@ -108,21 +118,23 @@ class Menu(QMainWindow):
         # Create a dedicated widget + layout for the credit label with margins
         credit_container = QWidget()
         credit_layout = QHBoxLayout(credit_container)
-        credit_layout.setContentsMargins(0, 0, 20, 20)  # Right and bottom margin
+        credit_layout.setContentsMargins(0, 0, int(self.width * 0.015), int(self.height * 0.02))  # Responsive margins
         credit_layout.addWidget(self.credit, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
 
         # Add the credit container to the main layout
         main_layout.addWidget(credit_container)
 
         # Optional: set spacing and margins on main layout
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)  # Prevent edge clipping
+        main_layout.setContentsMargins(int(self.width * 0.015), int(self.height * 0.02), int(self.width * 0.015), int(self.height * 0.02))
 
         # Handle window resize
         self.resizeEvent = self.handle_resize_event
 
+        # Set initial game mode
+        self.game_modes_overlay.set_active_mode(self.current_game_mode)
+
     def resize_background(self):
-        background_image_path = "/Users/lorinczdora/Documents/Development/GestureAI/img/lobby.jpg"
+        background_image_path = get_resource_path("img/lobby.jpg")
         pixmap = QPixmap(background_image_path).scaled(
             self.size(),
             Qt.AspectRatioMode.IgnoreAspectRatio,
@@ -133,30 +145,29 @@ class Menu(QMainWindow):
         self.setPalette(palette)
 
     def handle_resize_event(self, event):
+        self.width = event.size().width()
+        self.height = event.size().height()
         self.resize_background()
         if hasattr(self, 'game_modes_overlay'):
-            self.game_modes_overlay.resize(event.size().width(), event.size().height())
+            # Resize overlay responsively
+            self.game_modes_overlay.resize(
+                int(self.width * 0.25),  # 25% of screen width
+                int(self.height * 0.6)  # 60% of screen height
+            )
+            # Reposition to align with buttons
+            self.game_modes_overlay.move(
+                int(self.width * 0.25),  # 25% from left
+                int(self.height * 0.25),  # 25% from top
+            )
         super().resizeEvent(event)
 
     def set_game_mode(self, mode):
         """Set the current game mode and update UI accordingly"""
         self.current_game_mode = mode
+        self.game_modes_overlay.set_active_mode(mode)
         print(f"Game mode changed to: {mode}")
-        
-    def select_current_game_mode(self):
-        """Update the game mode buttons to show the currently selected mode"""
-        if self.current_game_mode == "default":
-            self.game_modes_overlay.activate_default_mode()
-        elif self.current_game_mode == "reverse":
-            self.game_modes_overlay.activate_reverse_mode()
-        elif self.current_game_mode == "double_trouble":
-            self.game_modes_overlay.activate_double_trouble_mode()
-        elif self.current_game_mode == "speedrun":
-            self.game_modes_overlay.activate_speedrun_mode()
 
     def open_game_fn(self):
-        if self.current_game_mode is None:
-            self.current_game_mode = "default"
         print(f"Starting game with {self.current_game_mode} mode")
         self.game = Test(current_game_mode=self.current_game_mode)
 
@@ -172,10 +183,19 @@ class Menu(QMainWindow):
             self.game_modes_overlay.hide()
             self.game_modes_button.setDefaultStyle()
         else:
-            self.select_current_game_mode()
+            self.game_modes_overlay.set_active_mode(self.current_game_mode)
             self.game_modes_overlay.show()
             self.game_modes_overlay.raise_()
             self.game_modes_button.setChosenStyle()
+            # Ensure overlay is positioned next to buttons
+            self.game_modes_overlay.move(
+                int(self.width * 0.25),  # 25% from left
+                int(self.height * 0.25),  # 25% from top
+            )
+            self.game_modes_overlay.resize(
+                int(self.width * 0.25),  # 25% of screen width
+                int(self.height * 0.6)  # 60% of screen height
+            )
 
     def help_fn(self):
         if self.help_overlay.isVisible():

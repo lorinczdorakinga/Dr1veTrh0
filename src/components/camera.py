@@ -8,10 +8,12 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout, QSizePoli
 from PyQt6.QtCore import Qt, QTimer 
 from PyQt6.QtGui import QImage, QPixmap
 
-from gesture.wink_detector import WinkDetector
+from src.core.gestures.wink_detector import WinkDetector
 
-from gesture.gesture_decoder import GestureDecoder
-from gui.game_elements.overlay_label import OverlayLabel
+from src.core.logic.abstract_functions import get_resource_path
+
+from src.core.gestures.gesture_decoder import GestureDecoder
+from src.components.overlay_label import OverlayLabel
 
 class Camera_Widget(QWidget):
     def __init__(self, parent=None, code=None):
@@ -45,7 +47,9 @@ class Camera_Widget(QWidget):
         self.image_label.setStyleSheet("border: 2px solid black;")
         
         # Result text label
-        self.resultText_label = OverlayLabel("", parent=parent, path="/Users/lorinczdora/Documents/Development/GestureAI/img/gesture_label.jpg")
+        text_image_path = get_resource_path("img/gesture_label.jpg")
+        print(f"Using text image path: {text_image_path}")
+        self.resultText_label = OverlayLabel("", parent=parent, path=text_image_path)
         self.resultText_label.setFixedSize(300, 80)
         self.resultText_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.resultText_label.setStyleSheet("background-color: rgba(255, 255, 255, 0);")  # Make background transparent

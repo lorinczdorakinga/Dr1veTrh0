@@ -2,14 +2,15 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea, QScroller
 from PyQt6.QtGui import QPainter, QColor, QPalette, QFont
 from PyQt6.QtCore import Qt
 
-from gui.game_elements.overlay_button import OverlayButton
-from gui.game_elements.overlay_label import OverlayLabel
+from src.components.overlay_button import OverlayButton
+from src.components.overlay_label import OverlayLabel
+from src.core.logic.abstract_functions import get_resource_path
 
 class Help(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        
+        self.path = get_resource_path("text")
         # Configure as an overlay
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         palette = self.palette()
@@ -55,7 +56,7 @@ class Help(QWidget):
         scroll_layout.setSpacing(10)
         # Read Instructions from File
         try:
-            with open("/Users/lorinczdora/Documents/Development/GestureAI/src/gui/game_scenes/landing_overlays/instructions.txt", "r", encoding="utf-8") as file:
+            with open(self.path + "/instructionsHU.txt", "r", encoding="utf-8") as file:
                 instructions_text = file.read()
         except Exception as e:
             instructions_text = "Could not load instructions.txt:\n" + str(e)

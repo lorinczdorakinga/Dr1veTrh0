@@ -1,38 +1,40 @@
 from PyQt6.QtWidgets import QWidget, QPushButton
-from PyQt6.QtGui import QPainter, QColor, QPalette
+from PyQt6.QtGui import QPainter, QColor, QPalette, QFont
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QLabel, QHBoxLayout, QStackedLayout, QFrame
 from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import QPoint, QTimer
 
-from gui.game_elements.overlay_button import OverlayButton
+from src.components.overlay_button import OverlayButton
 
 class CorrectAnswerOverlay(QWidget):
     def __init__(self, parent=None, code=None):
         # Setup
         super().__init__(parent)
         self.parent = parent
+        self.width = self.parent.width() if self.parent else 1280
+        self.height = self.parent.height() if self.parent else 960
         
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # No window frame
         palette = QPalette()
         palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 200))
         self.setPalette(palette)
         self.setAutoFillBackground(True)  # Enable auto fill background
-        if parent:
-            self.resize(parent.width(), parent.height())
-        else:
-            self.resize(1280, 960)
-            
-        # Move to top-left corner to cover the entire parent widget
+        
+        self.resize(self.width, self.height)
         self.move(0, 0)
+        
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(50, 50, 50, 50)  # Add some margins
+        layout.setContentsMargins(
+            int(self.width * 0.03), int(self.height * 0.05),
+            int(self.width * 0.03), int(self.height * 0.05)
+        )  # Responsive margins
         
         # Add elements with improved styling
         self.label = QLabel("Correct!")
         self.label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        font = self.label.font()
-        font.setPointSize(36)
+        font = QFont()
+        font.setPointSize(int(self.height * 0.04))  # 4% of height
         font.setBold(True)
         font.setFamily("Comic Sans MS")
         self.label.setFont(font)
@@ -41,12 +43,16 @@ class CorrectAnswerOverlay(QWidget):
         # Code display label
         self.code_label = QLabel()
         self.code_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        font = self.code_label.font()
-        font.setPointSize(24)
+        font = QFont()
+        font.setPointSize(int(self.height * 0.03))  # 3% of height
         self.code_label.setFont(font)
         self.code_label.setStyleSheet("color: white;")
         
         self.continue_game = OverlayButton("Continue", self)
+        self.continue_game.setFixedSize(
+            int(self.width * 0.2),  # 20% of width
+            int(self.height * 0.08)  # 8% of height
+        )
         
         # Layout arrangement
         layout.addStretch(1)
@@ -54,7 +60,7 @@ class CorrectAnswerOverlay(QWidget):
         layout.addStretch(1)
         layout.addWidget(self.code_label)
         layout.addStretch(1)
-        layout.addWidget(self.continue_game, 0, Qt.AlignmentFlag.AlignCenter)  # Center the button horizontally
+        layout.addWidget(self.continue_game, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addStretch(1)
         
         # Set initial code if provided
@@ -64,12 +70,13 @@ class CorrectAnswerOverlay(QWidget):
     def showEvent(self, event):
         """Ensure the overlay is properly sized when shown"""
         if self.parent:
-            self.resize(self.parent.width(), self.parent.height())
+            self.width = self.parent.width()
+            self.height = self.parent.height()
+            self.resize(self.width, self.height)
         super().showEvent(event)
     
     def update_code(self, code, current_game_mode=None):
         """Update the displayed code"""
-        print(f"--------------------------------------------------------------------------------------------Updating code: {current_game_mode}")
         if code:
             if current_game_mode == "default" or current_game_mode == "double_trouble" or current_game_mode == "speedrun":
                 decimal_code = self.binary_array_to_decimal(code)
@@ -84,12 +91,13 @@ class CorrectAnswerOverlay(QWidget):
             # Make sure rich text rendering is enabled
             self.code_label.setTextFormat(Qt.TextFormat.RichText)
             # Set the font family
-            font = self.code_label.font()
+            font = QFont()
+            font.setPointSize(int(self.height * 0.03))  # 3% of height
             font.setFamily("Comic Sans MS")
             self.code_label.setFont(font)
 
     def binary_array_to_decimal(self, binary_array):
-        """Convert a binary array of size 5 to a decimal number"""
+        """Eles a binary array of size 5 to a decimal number"""
         decimal = int("".join(str(bit) for bit in binary_array), 2)
         return decimal
     

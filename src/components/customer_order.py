@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap, QTransform
 from PyQt6.QtCore import Qt
 
+from src.core.logic.abstract_functions import get_resource_path
+
 class CustomerOrder(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -25,7 +27,7 @@ class CustomerOrder(QWidget):
         self.container.setMinimumSize(400, 300)
         
         # Set up speech bubble background
-        bubble_image_path = "img/bubble.png"
+        bubble_image_path = get_resource_path("img/bubble.png")
         self.bubble_label = QLabel(self.container)
         
         try:
@@ -97,7 +99,8 @@ class CustomerOrder(QWidget):
             self.order = self.path
             
             # Load and scale the image
-            menu_image_path = f"img/menu/{self.path}.png"
+            menu_image_path = get_resource_path(f"img/menu/")
+            menu_image_path += "/" + self.path + ".png"
             self.menu_image = QPixmap(menu_image_path)
             
             if self.menu_image.isNull():

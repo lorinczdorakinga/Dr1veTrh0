@@ -7,9 +7,9 @@ from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import QPoint, QTimer
 
 
-from gui.game_scenes.landing_overlays.correct_answer import CorrectAnswerOverlay
-from gui.game_scenes.landing_overlays.incorrect_answer import IncorrectAnswerOverlay
-from gui.game_scenes.landing_overlays.time_is_up import TimeIsUpOverlay
+from src.overlays.correct_answer import CorrectAnswerOverlay
+from src.overlays.incorrect_answer import IncorrectAnswerOverlay
+from src.overlays.time_is_up import TimeIsUpOverlay
 
 
 class ElaborateAnswer(QWidget):
@@ -224,7 +224,7 @@ class ElaborateAnswer(QWidget):
                 self._parent_test.reset_score_display()
     
     def back_to_menu_fn(self):
-        from gui.menu_window import Menu
+        from src.scenes.menu.menu_window import Menu
         
         self.time_is_up_overlay.hide()
         self.incorrect_answer_overlay.hide()
