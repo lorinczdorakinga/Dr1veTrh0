@@ -1,22 +1,47 @@
+# Firebase credentials (NEVER commit these!)
+*firebase-adminsdk*.json
+serviceAccountKey.json
+dr1vethr0-firebase-adminsdk-fbsvc-ce36a3f2bc.json
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
 # Virtual environment
 .venv/
 venv/
+ENV/
 env/
 
-# Python cache
-__pycache__/
-*.pyc
-*.py[cod]
-*.pyo
-*.pyd
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.log
+
+# OS
+.DS_Store
+Thumbs.db
