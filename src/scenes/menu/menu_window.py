@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QStackedWidget, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QPixmap, QFont, QPalette, QBrush
 import sys
 
 from src.core.logic.abstract_functions import get_resource_path
+from src.components.login_page import UserAuth
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 from src.scenes.test import Test
@@ -14,26 +15,18 @@ from src.overlays.help import Help
 class Menu(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
-        self.setWindowTitle("Menu")
-        self.screen = QApplication.primaryScreen()
-        self.screen_geometry = self.screen.geometry()
-        self.width = self.screen_geometry.width()
-        self.height = self.screen_geometry.height()
+        self._setup_ui()
+        self._initialize_elements()
 
-        self.setMinimumSize(self.width, self.height)
         self.showFullScreen()
 
-        # Keep track of the current game mode
-        self.current_game_mode = "default"  # Set default mode initially
-
+    def _initialize_elements(self):
         # Create the main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
         main_layout.setSpacing(int(self.height * 0.02))  # 2% of screen height
 
-        # Set background image using palette
-        self.resize_background()
 
         # Initialize overlays
         self.game_modes_overlay = GameModes(self)
@@ -70,6 +63,10 @@ class Menu(QMainWindow):
         self.start.clicked.connect(self.open_game_fn)
         self.start.setFixedSize(button_width, button_height)
 
+        self.auth = OverlayButton("Log in")
+        self.auth.clicked.connect(self.auth_fn)
+        self.auth.setFixedSize(button_width, button_height)
+
         self.game_modes_button = OverlayButton("Game Modes")
         self.game_modes_button.clicked.connect(self.game_modes_fn)
         self.game_modes_button.setFixedSize(button_width, button_height)
@@ -102,17 +99,22 @@ class Menu(QMainWindow):
         font.setPointSize(int(self.height * 0.02))  # 2% of screen height
         self.credit.setFont(font)
 
+        self.username = OverlayLabel("")
+        self.username.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.username.setTextColor("black")
+        self.username.setText("your username")
+        font = QFont()
+        font.setPointSize(int(self.height * 0.02))  # 2% of screen height
+        self.username.setFont(font)
+
         self.game_modes_overlay.hide()
         self.help_overlay = Help(self)
         self.help_overlay.hide()
 
-        # Top stretch to push content downward
+        main_layout.addWidget(self.username, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        main_layout.addWidget(self.auth, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
         main_layout.addStretch(3)
-
-        # Add buttons container
         main_layout.addWidget(buttons_container)
-
-        # Bottom stretch to create space before the credit label
         main_layout.addStretch(1)
 
         # Create a dedicated widget + layout for the credit label with margins
@@ -132,6 +134,20 @@ class Menu(QMainWindow):
 
         # Set initial game mode
         self.game_modes_overlay.set_active_mode(self.current_game_mode)
+
+    def _setup_ui(self):
+        self.setWindowTitle("Menu")
+        self.screen = QApplication.primaryScreen()
+        self.screen_geometry = self.screen.geometry()
+        self.width = self.screen_geometry.width()
+        self.height = self.screen_geometry.height()
+
+        self.setMinimumSize(self.width, self.height)
+
+        self.current_game_mode = "default"  # Set default mode initially
+
+        self.resize_background()
+       
 
     def resize_background(self):
         background_image_path = get_resource_path("img/lobby.jpg")
@@ -196,6 +212,17 @@ class Menu(QMainWindow):
                 int(self.width * 0.25),  # 25% of screen width
                 int(self.height * 0.6)  # 60% of screen height
             )
+
+    def auth_fn(self):
+        print("Auth button clicked")
+        if hasattr(self, 'user_auth'):
+            self.user_auth.show()
+            self.user_auth.raise_()
+        else:
+            self.user_auth = UserAuth(self)
+            self.user_auth.show()
+            self.user_auth.raise_()
+        self.auth.setDefaultStyle()
 
     def help_fn(self):
         if self.help_overlay.isVisible():

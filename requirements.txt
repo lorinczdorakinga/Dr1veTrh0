@@ -2,3 +2,5 @@ mediapipe
 PyQt6
 pygame
 opencv-python
+firebase-admin==6.2.0
+python-dotenv==1.0.0

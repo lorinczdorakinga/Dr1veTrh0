@@ -1,12 +1,12 @@
 import sys
-import pygame
+import time
 import random
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QApplication, QHBoxLayout, QLabel,
     QStackedLayout, QFrame, QSizePolicy
 )
 from PyQt6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
-from PyQt6.QtCore import Qt, QPoint, QTimer
+from PyQt6.QtCore import Qt, QPoint, QTimer, QTime
 
 from src.core.logic.abstract_functions import get_resource_path
 from src.components.overlay_label import OverlayLabel
@@ -91,9 +91,13 @@ class Test(QWidget):
         self.pause_game.resize(self.screen_width, self.screen_height)
         self.pause_game.hide()
 
+        # Set up 60 FPS timer (1000ms / 60 ≈ 16.67ms per frame)
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_time_display)
-        self.update_timer.start(100)
+        self.update_timer.start(1000 // 60)  # ~16.67ms for 60 FPS
+
+        # Track game time
+        self.game_start_time = QTime.currentTime()
 
     def _configure_initial_state(self):
         self.had_active_order = False
@@ -111,8 +115,7 @@ class Test(QWidget):
     def set_game_mode(self, mode):
         self.current_game_mode = mode
         self.daily_deals.current_game_mode = mode
-        if hasattr(self.scene1_widget, 'pygame_app'):
-            self.scene1_widget.pygame_app.order_window.reset_timer()
+        self.scene1_widget.order_window.reset_timer()
         self.setup_camera()
         self.initialize_game_mode()
 
@@ -145,9 +148,8 @@ class Test(QWidget):
         print(f"{self.current_game_mode.capitalize()} mode initialized with {config['time']}s order time")
 
     def _set_order_time(self, seconds):
-        if hasattr(self.scene1_widget, 'pygame_app'):
-            self.scene1_widget.seconds_to_order = seconds
-            self.scene1_widget.seconds_to_order = seconds
+        self.scene1_widget.seconds_to_order = seconds
+        self.scene1_widget.order_start_time = QTime.currentTime()
 
     def setup_camera(self):
         camera_width = self.camera_widget.width()
@@ -164,12 +166,12 @@ class Test(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape and self.elaborate_answer.isHidden():
-            self.last_pause_time = pygame.time.get_ticks()
+            self.last_pause_time = QTime.currentTime()
             self.toggle_pause(pause_overlay=True)
         super().keyPressEvent(event)
 
     def toggle_pause(self, pause_overlay=None):
-        current_time = pygame.time.get_ticks()
+        current_time = QTime.currentTime()
         if self.game_playing:
             if hasattr(self.scene1_widget, 'get_remaining_time'):
                 self.paused_remaining_time = self.scene1_widget.get_remaining_time() / 1000
@@ -186,15 +188,14 @@ class Test(QWidget):
             self.score_label.raise_()
             self.timer_label.raise_()
             self.pause_start_time = current_time
-            print(f"Game paused at {self.pause_start_time}ms with {self.paused_remaining_time:.1f}s remaining")
+            print(f"Game paused at {current_time.toString('hh:mm:ss.zzz')} with {self.paused_remaining_time:.1f}s remaining")
         else:
-            pause_duration = current_time - self.pause_start_time
+            pause_duration = self.pause_start_time.msecsTo(current_time)
             print(f"Game resumed after {pause_duration}ms pause with {self.paused_remaining_time:.1f}s remaining")
-            if hasattr(self.scene1_widget, 'pygame_app') and hasattr(self.scene1_widget.pygame_app, 'order_window'):
-                order_window = self.scene1_widget.pygame_app.order_window
-                if order_window.middle_reached:
-                    new_order_start_time = current_time - (order_window.seconds_to_order - self.paused_remaining_time) * 1000
-                    order_window.order_start_time = int(new_order_start_time)
+            order_window = self.scene1_widget.order_window
+            if order_window.middle_reached:
+                new_order_start_time = QTime.currentTime().addMSecs(-int((order_window.seconds_to_order - self.paused_remaining_time) * 1000))
+                order_window.order_start_time = new_order_start_time
             self.scene1_widget.set_paused(False)
             self.scene2_widget.set_paused(False)
             self.update_timer.start()
@@ -292,12 +293,11 @@ class Test(QWidget):
         print(f"Score updated: {self.correct_answers_count} correct answers")
 
     def reset_timer(self):
-        if hasattr(self.scene1_widget, 'pygame_app') and hasattr(self.scene1_widget.pygame_app, 'order_window'):
-            order_window = self.scene1_widget.pygame_app.order_window
-            order_window.reset_timer()
-            order_window.middle_reached = False
-            order_window.order_start_time = pygame.time.get_ticks()
-            order_window.x -= order_window.speed
+        order_window = self.scene1_widget.order_window
+        order_window.reset_timer()
+        order_window.middle_reached = False
+        order_window.order_start_time = QTime.currentTime()
+        order_window.x -= order_window.speed
         self.remaining_time = 0
         self.timer_label.text = f"Time: {self.remaining_time:.1f}s"
         self.timer_label.update()
