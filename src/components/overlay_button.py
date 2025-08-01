@@ -55,6 +55,12 @@ class OverlayButton(QPushButton):
             # If no image, just use the default paint event
             super().paintEvent(event)
 
+    # def setText(self, text):
+    #     self.text = text
+    #     self.adjustSize()
+    #     self.updateGeometry()
+    #     self.update()
+
     def update_image(self, new_image_path):
         """Update the button's image to a new one"""
         if self.background_img is not None:

@@ -6,41 +6,34 @@ from PyQt6.QtWidgets import QApplication, QVBoxLayout, QLabel, QHBoxLayout, QSta
 from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import QPoint, QTimer
 
-
 from src.overlays.correct_answer import CorrectAnswerOverlay
 from src.overlays.incorrect_answer import IncorrectAnswerOverlay
 from src.overlays.time_is_up import TimeIsUpOverlay
 
-
 class ElaborateAnswer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Store an explicit reference to the parent widget
         self._parent_test = parent
         
         self.true_code = None
         self.current_code = None
         self.remaining_time = None
         self.current_game_mode = None
-        self.setVisible(False)  # Start hidden
+        self.setVisible(False)
         
-        # Make sure the widget covers the entire parent
         if parent:
             self.resize(parent.screen_width, parent.screen_height)
         else:
             self.resize(1280, 960)
             
-        # Create the overlays - initialize with None for code
         self.correct_answer_overlay = CorrectAnswerOverlay(parent=self, code=None)
-        self.incorrect_answer_overlay = IncorrectAnswerOverlay(parent=self, true_code=None, current_code = None)
+        self.incorrect_answer_overlay = IncorrectAnswerOverlay(parent=self, true_code=None, current_code=None)
         self.time_is_up_overlay = TimeIsUpOverlay(parent=self)
         
-        # Hide the overlays initially
         self.correct_answer_overlay.hide()
         self.incorrect_answer_overlay.hide()
         self.time_is_up_overlay.hide()
         
-        # Connect overlay signals to slots right at initialization
         if hasattr(self.correct_answer_overlay, 'continue_game'):
             self.correct_answer_overlay.continue_game.clicked.connect(self.continue_fn)
         
@@ -54,14 +47,11 @@ class ElaborateAnswer(QWidget):
             self.incorrect_answer_overlay.main_menu.clicked.connect(self.back_to_menu_fn)
             self.time_is_up_overlay.main_menu.clicked.connect(self.back_to_menu_fn)
             
-        # Debug output to verify parent initialization
         print(f"ElaborateAnswer initialized with parent: {self._parent_test}")
         print(f"Parent has update_orders: {hasattr(self._parent_test, 'update_orders') if self._parent_test else False}")
 
     def resizeEvent(self, event):
-        """Handle resize events to ensure overlays maintain full coverage"""
         super().resizeEvent(event)
-        # Resize the overlays
         self.correct_answer_overlay.resize(self.width(), self.height())
         self.time_is_up_overlay.resize(self.width(), self.height())
 
@@ -75,9 +65,7 @@ class ElaborateAnswer(QWidget):
             self.current_game_mode = current_game_mode
 
     def shown_code_to_decimal(self, binary_string):
-        # Count how many 1s are there in the binary string
         decimal_number = binary_string.count('1')
-
         return decimal_number
     
     def binary_array_to_decimal(self, binary_array):
@@ -85,16 +73,13 @@ class ElaborateAnswer(QWidget):
         return decimal
 
     def elaborate(self, true_code, current_code, remaining_time, current_game_mode):
-        """Check if the current code matches the true code"""
         self.update_code_values(true_code, current_code, remaining_time, current_game_mode)
-        print(f"Comparing codes - True: {self.true_code}, Current: {self.current_code}" + " - remaining time: " + str(remaining_time))
+        print(f"Comparing codes - True: {self.true_code}, Current: {self.current_code} - remaining time: {remaining_time}")
         
-        # Make sure both the parent widget and overlays are hidden first
         self.correct_answer_overlay.hide()
         self.time_is_up_overlay.hide()
         self.incorrect_answer_overlay.hide()
         
-        # Reset positions of overlays
         self.correct_answer_overlay.move(0, 0)
         self.time_is_up_overlay.move(0, 0)
         self.incorrect_answer_overlay.move(0, 0)
@@ -102,25 +87,22 @@ class ElaborateAnswer(QWidget):
         if self._parent_test and hasattr(self._parent_test, 'toggle_pause'):
             self._parent_test.toggle_pause()
 
-        # Handle time's up case
         if remaining_time <= 0:
             print("Time is up!")
+            self._parent_test.end_game()
             self.show()
             self.raise_()
-            
             self.time_is_up_overlay.show()
             self.time_is_up_overlay.raise_()
-            
             return
         
         if self._parent_test.current_game_mode == "reverse":
             self.current_code = self.shown_code_to_decimal(self.current_code)
             self.true_code = self.binary_array_to_decimal(self.true_code)
-        # Handle code validation
+        
         print("LAST CHECK: True: " + str(self.true_code) + " Current: " + str(self.current_code))
         if self.true_code == self.current_code:
             print("Correct code!")
-
             if self._parent_test and hasattr(self._parent_test, 'update_timer'):
                 print("Stopping timer")
                 self._parent_test.update_timer.stop()
@@ -132,7 +114,6 @@ class ElaborateAnswer(QWidget):
                 if hasattr(self._parent_test, 'update_score_display'):
                     self._parent_test.update_score_display()
 
-            # Update the correct answer overlay with the true code
             if hasattr(self.correct_answer_overlay, 'update_code'):
                 self.correct_answer_overlay.update_code(self.true_code, current_game_mode)
                 
@@ -140,14 +121,12 @@ class ElaborateAnswer(QWidget):
             self.raise_()
             self.correct_answer_overlay.show()
             self.correct_answer_overlay.raise_()
-
         else:
             print("Incorrect code!")
-            # Update the incorrect answer overlay with both codes
+            self._parent_test.end_game()
             if hasattr(self.incorrect_answer_overlay, 'update_code'):
                 self.incorrect_answer_overlay.update_code(self.true_code, self.current_code, current_game_mode)
                 
-            # Show incorrect answer overlay
             self.show()
             self.raise_()
             self.incorrect_answer_overlay.show()
@@ -158,14 +137,12 @@ class ElaborateAnswer(QWidget):
         self.hide()
         
         if self._parent_test:
-            # Always ensure we're back to drive-thru scene
             if self._parent_test.current_scene != "drive_thru":
                 self._parent_test.toggle_scenes()
         
             if hasattr(self._parent_test, 'toggle_pause'):
-                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause
+                self._parent_test.toggle_pause()
             
-            # Handle order updates based on score
             if hasattr(self._parent_test, 'update_orders') and hasattr(self._parent_test, 'correct_answers_count'):
                 print("Calling parent's update_orders method via explicit reference")
                 if self._parent_test.correct_answers_count > 1 and self._parent_test.correct_answers_count % 5 == 0:
@@ -179,12 +156,11 @@ class ElaborateAnswer(QWidget):
         self.incorrect_answer_overlay.hide()
         self.hide()
         
-        # Try multiple approaches to access the parent
         if self._parent_test:
             if hasattr(self._parent_test, 'reset_score_display'):
                 self._parent_test.reset_score_display()
             if hasattr(self._parent_test, 'toggle_pause'):
-                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause   
+                self._parent_test.toggle_pause()   
             if hasattr(self._parent_test, 'reset_timer'):
                 self._parent_test.reset_timer()
 
@@ -203,11 +179,9 @@ class ElaborateAnswer(QWidget):
         self.time_is_up_overlay.hide()
         self.hide()
         
-        # Try multiple approaches to access the parent
         if self._parent_test:
-
             if hasattr(self._parent_test, 'toggle_pause'):
-                self._parent_test.toggle_pause() # Call the toggle_pause method on the parent if it exists, else toggle_pause
+                self._parent_test.toggle_pause()
             
             if hasattr(self._parent_test, 'reset_timer'):
                 self._parent_test.reset_timer()
@@ -230,7 +204,6 @@ class ElaborateAnswer(QWidget):
         self.incorrect_answer_overlay.hide()
         self.hide()
 
-        # Try multiple approaches to access the parent
         if self._parent_test:
             if hasattr(self._parent_test, 'toggle_pause'):
                 self._parent_test.toggle_pause()
@@ -246,4 +219,3 @@ class ElaborateAnswer(QWidget):
         self.menu = Menu()
         self.menu.showFullScreen()
         self._parent_test.close()
-       

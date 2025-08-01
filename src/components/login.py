@@ -5,16 +5,10 @@ import sys
 
 from src.core.logic.abstract_functions import get_resource_path
 from src.components.notification import show_notification
-from src.core.logic.firebase_crud import FirebaseCRUD
-
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
-
-from src.overlays.forgot_password import ForgotPassword
-from src.overlays.register import Register
-
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QStackedWidget, QLabel
-import sys
+from src.components.forgot_password import ForgotPassword
+from src.components.register import Register
 
 class UserAuth(QWidget):
     def __init__(self, parent=None):
@@ -22,30 +16,13 @@ class UserAuth(QWidget):
         self.parent = parent
         self._setup_ui()
         self._initialize_elements()
-        self.fdb = FirebaseCRUD()
 
     def _setup_ui(self):
-        """Initialize the basic UI components"""
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 230))
-        self.setPalette(palette)
-        self.setAutoFillBackground(True)
-
-        # Use self.width() and self.height() to get the dimensions
-        parent_rect = self.parent.geometry() if self.parent else self.geometry()
-        self.resize(parent_rect.width(), parent_rect.height())
-
         self.main_widget = QWidget()
         self.main_layout = QVBoxLayout(self.main_widget)
-        self.main_layout.setSpacing(int(self.height() * 0.02))  # 2% of height
-        self.main_layout.setContentsMargins(
-            int(self.width() * 0.03), int(self.height() * 0.05),
-            int(self.width() * 0.03), int(self.height() * 0.05)
-        )  # Responsive margins
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(50, 50, 50, 50)
 
-        # Only set layout if not already set
         if self.layout() is None:
             main_container_layout = QVBoxLayout(self)
             main_container_layout.addWidget(self.main_widget)
@@ -53,32 +30,27 @@ class UserAuth(QWidget):
             self.setLayout(main_container_layout)
 
     def login_fn(self, email, password):
-        res = self.fdb.login_user(email, password)
-        if res is not None:
-            show_notification("Success", f"Login successful for {res.get('username')}")
+        res = self.parent.fdb.login_user(email, password)
+        if isinstance(res, dict) and 'idToken' in res:
+            show_notification("Success", f"Login successful for {res.get('displayName', 'User')}")
+            self.parent.set_current_user(res)
+            self.parent.user_page.update_user_data()
+            self.parent.switch_to_user_page()
         else:
-            show_notification("Error", "Login failed. Please check your credentials.")
-        # self.login = Login()
-        # self.login.showFullScreen()
-    
+            error_msg = res if isinstance(res, str) else "Login failed. Please check your credentials."
+            show_notification("Error", error_msg)
+
     def register_fn(self):
-        self.register = Register()
-        self.register.show()
-        print("Register")
+        self.parent.switch_to_register()
 
     def forgot_password_fn(self):
-        self.forgot_password = ForgotPassword()
-        self.forgot_password.showFullScreen()
+        self.parent.switch_to_forgot_password()
 
     def back(self):
-        self.close()
+        self.parent.exit_widget()
 
     def _initialize_elements(self):
-        """Create and arrange all buttons and input fields """
-        # Define fixed width for central widget
         central_width = 500
-
-        # Create central widget
         central_widget = QWidget()
         central_widget.setFixedWidth(central_width)
         central_widget.setStyleSheet("""
@@ -88,26 +60,23 @@ class UserAuth(QWidget):
             }
         """)
 
-        # Central layout with padding and spacing
         central_layout = QVBoxLayout(central_widget)
         central_layout.setContentsMargins(20, 20, 20, 20)
         central_layout.setSpacing(20)
 
-        # Title Label
         self.title_label = OverlayLabel("Sign In")
         font = QFont("Comic Sans MS", 24, QFont.Weight.Bold)
         self.title_label.setFont(font)
         self.title_label.setTextColor("white")
         central_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Username Input with Icon and Dummy Label
         username_layout = QHBoxLayout()
         user_icon = QLabel()
         path = get_resource_path("img/user.svg")
         user_icon.setPixmap(QPixmap(path).scaled(24, 24))
         username_layout.addWidget(user_icon, stretch=0)
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Username or Email")
+        self.username_input.setPlaceholderText("Email")
         self.username_input.setStyleSheet("""
             QLineEdit {
                 background-color: #333;
@@ -120,11 +89,10 @@ class UserAuth(QWidget):
         """)
         username_layout.addWidget(self.username_input, stretch=1)
         dummy_label = QLabel()
-        dummy_label.setFixedWidth(24)  # Matches visibility_icon width
+        dummy_label.setFixedWidth(24)
         username_layout.addWidget(dummy_label, stretch=0)
         central_layout.addLayout(username_layout)
 
-        # Password Input with Icon and Visibility Toggle
         password_layout = QHBoxLayout()
         lock_icon = QLabel()
         path = get_resource_path("img/password.svg")
@@ -153,13 +121,11 @@ class UserAuth(QWidget):
         password_layout.addWidget(self.visibility_icon, stretch=0)
         central_layout.addLayout(password_layout)
 
-        # Log in Button
         login_button = OverlayButton("Log in")
         login_button.clicked.connect(lambda: self.login_fn(self.username_input.text(), self.password_input.text()))
         central_layout.addWidget(login_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addStretch()
 
-        # Forgot Password Link
         forgot_layout = QVBoxLayout()
         forgot_layout.addStretch()
         forgot_button = OverlayButton("Forgot Password?")
@@ -182,12 +148,10 @@ class UserAuth(QWidget):
         forgot_layout.addWidget(forgot_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addLayout(forgot_layout)
 
-        # Register Now Button (full-width like Log in)
         register_button = OverlayButton("Register now")
         register_button.clicked.connect(self.register_fn)
         central_layout.addWidget(register_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Back Button in Horizontal Layout
         back_button = OverlayButton("Back")
         back_button.clicked.connect(self.back)
         back_layout = QHBoxLayout()
@@ -196,7 +160,6 @@ class UserAuth(QWidget):
         back_layout.addStretch()
         central_layout.addLayout(back_layout)
 
-        # Center the central widget in the main layout
         self.main_layout.addStretch(1)
         horizontal_layout = QHBoxLayout()
         horizontal_layout.addStretch(1)
@@ -206,7 +169,6 @@ class UserAuth(QWidget):
         self.main_layout.addStretch(1)
 
     def toggle_password_visibility(self, event):
-        """Toggle the visibility of the password"""
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.visibility_icon.setPixmap(QPixmap(self.visible_path).scaled(24, 24))

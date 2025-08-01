@@ -20,10 +20,11 @@ from .kitchen.kitchen import Kitchen
 from src.components.camera import Camera_Widget
 
 class Test(QWidget):
-    def __init__(self, current_game_mode=None):
+    def __init__(self, auth_handler, current_game_mode=None):
         super().__init__()
-        self._setup_screen()
+        self.auth_handler = auth_handler
         self.current_game_mode = current_game_mode
+        self._setup_screen()
         self._initialize_ui()
         self._setup_overlays()
         self._configure_initial_state()
@@ -91,12 +92,10 @@ class Test(QWidget):
         self.pause_game.resize(self.screen_width, self.screen_height)
         self.pause_game.hide()
 
-        # Set up 60 FPS timer (1000ms / 60 ≈ 16.67ms per frame)
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_time_display)
-        self.update_timer.start(1000 // 60)  # ~16.67ms for 60 FPS
+        self.update_timer.start(1000 // 60)
 
-        # Track game time
         self.game_start_time = QTime.currentTime()
 
     def _configure_initial_state(self):
@@ -339,3 +338,30 @@ class Test(QWidget):
             remaining_time=self.remaining_time,
             current_game_mode=self.current_game_mode
         )
+
+    def end_game(self):
+        self.check_and_update_highscore()
+
+    def check_and_update_highscore(self):
+        if not self.auth_handler.current_user:
+            return
+        current_score = self.correct_answers_count
+        game_mode = self.current_game_mode
+        highscore_key = f'{game_mode}_highscore'
+        current_highscore = self.auth_handler.current_user.get(highscore_key, 0)
+        if current_score > current_highscore:
+            uid = self.auth_handler.current_user['localId']
+            email = self.auth_handler.current_user['email']
+            self.auth_handler.fdb.update_highscore(uid, game_mode, current_score, email)
+            self.auth_handler.current_user[highscore_key] = current_score
+            self.show_new_highscore_message()
+
+    def show_new_highscore_message(self):
+        highscore_label = OverlayLabel("New highscore reached!", self)
+        highscore_label.setFont(QFont("Comic Sans MS", 24, QFont.Weight.Bold))
+        highscore_label.setTextColor(QColor("#FFE100"))
+        highscore_label.move((self.width() //2 - highscore_label.width()) // 2, self.height() // 4)
+        highscore_label.setFixedWidth(self.width() // 2)
+        highscore_label.show()
+        highscore_label.raise_()
+        QTimer.singleShot(5000, highscore_label.hide)
