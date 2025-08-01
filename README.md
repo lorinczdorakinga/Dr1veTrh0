@@ -29,8 +29,8 @@ Fork the repo, make your changes, and submit a pull request. Let’s make this f
 📬 **Contact**
 Created by Lórincz Dóra-Kinga 
 For inquiries, reach out via: 
-- [facebook]([url](https://www.facebook.com/kinga.dora.39/))
-- [tiktok]([url](https://www.tiktok.com/@th1nkitthr0))
+- [facebook](https://www.facebook.com/kinga.dora.39/)
+- [tiktok](https://www.tiktok.com/@th1nkitthr0)
 
 Hop in, decode fast, and serve those orders with style! 🚘💨
 
