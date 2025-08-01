@@ -89,10 +89,6 @@ class IncorrectAnswerOverlay(QWidget):
         super().showEvent(event)
 
     def update_code(self, true_code, current_code, current_game_mode=None):
-        """Update the displayed code labels with the true and current codes"""
-        print(f"--------------------------------------------------------------------------------------------Updating code: {true_code}, {current_code}")
-        print(f"--------------------------------------------------------------------------------------------Updating game mode: {current_game_mode}")
-
         if true_code and current_code:
             if current_game_mode == "default" or current_game_mode == "double_trouble" or current_game_mode == "speedrun":
                 true_decimal = self.binary_array_to_decimal(true_code)
