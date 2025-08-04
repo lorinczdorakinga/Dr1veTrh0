@@ -6,11 +6,13 @@ from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import QPoint, QTimer
 
 from src.components.overlay_button import OverlayButton
+from src.components.overlay_label import OverlayLabel
 
 class IncorrectAnswerOverlay(QWidget):
-    def __init__(self, parent=None, true_code=None, current_code=None):
+    def __init__(self, parent=None, true_code=None, current_code=None, highscore=False):
         # Setup
         super().__init__(parent)
+        self.highscore = highscore
         self.parent = parent
         self.width = self.parent.width() if self.parent else 1280
         self.height = self.parent.height() if self.parent else 960
@@ -39,6 +41,13 @@ class IncorrectAnswerOverlay(QWidget):
         font.setBold(True)
         self.label.setFont(font)
         self.label.setStyleSheet("color: white;")
+
+        self.highscore_label = OverlayLabel("New highscore reached!", self)
+        self.highscore_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.highscore_label.setFont(QFont("Comic Sans MS", 24, QFont.Weight.Bold))
+        self.highscore_label.setTextColor(QColor("#FF0000"))  # Bright red for visibility
+        # self.highscore_label.setFixedWidth(self.width // 2)
+        self.highscore_label.hide()
 
         # Code display labels
         self.true_code_label = QLabel("")
@@ -69,6 +78,8 @@ class IncorrectAnswerOverlay(QWidget):
         layout.addStretch(1)
         layout.addWidget(self.label)
         layout.addStretch(1)
+        layout.addWidget(self.highscore_label)
+        layout.addStretch(1)
         layout.addWidget(self.true_code_label)
         layout.addWidget(self.current_code_label)
         layout.addStretch(1)
@@ -88,8 +99,26 @@ class IncorrectAnswerOverlay(QWidget):
             self.resize(self.width, self.height)
         super().showEvent(event)
 
-    def update_code(self, true_code, current_code, current_game_mode=None):
+    def update_code(self, true_code, current_code, current_game_mode=None, highscore=False):
+        self.highscore = highscore
+        self.true_code_label.setTextFormat(Qt.TextFormat.RichText)
+        font = QFont()
+        font.setPointSize(int(self.height * 0.03))  # 3% of height
+        font.setFamily("Comic Sans MS")
+        self.true_code_label.setFont(font)
+        self.current_code_label.setTextFormat(Qt.TextFormat.RichText)
+        font = QFont()
+        font.setPointSize(int(self.height * 0.03))  # 3% of height
+        font.setFamily("Comic Sans MS")
+        self.current_code_label.setFont(font)
+
+        if self.highscore:
+            self.highscore_label.show()
+            self.highscore_label.raise_()
+            QTimer.singleShot(10000, self.highscore_label.hide)
+
         if true_code and current_code:
+
             if current_game_mode == "default" or current_game_mode == "double_trouble" or current_game_mode == "speedrun":
                 true_decimal = self.binary_array_to_decimal(true_code)
                 true_binary_number = self.binary_array_to_binary_number(true_code)
@@ -102,17 +131,6 @@ class IncorrectAnswerOverlay(QWidget):
                 
                 self.true_code_label.setText(f"{true_binary_number}<sub>(2)</sub>  →  {true_code}<sub>(10)</sub>")
                 self.current_code_label.setText(f"{true_binary_number}<sub>(2)</sub>  !=  {current_code}<sub>(10)</sub>")
-
-            self.true_code_label.setTextFormat(Qt.TextFormat.RichText)
-            font = QFont()
-            font.setPointSize(int(self.height * 0.03))  # 3% of height
-            font.setFamily("Comic Sans MS")
-            self.true_code_label.setFont(font)
-            self.current_code_label.setTextFormat(Qt.TextFormat.RichText)
-            font = QFont()
-            font.setPointSize(int(self.height * 0.03))  # 3% of height
-            font.setFamily("Comic Sans MS")
-            self.current_code_label.setFont(font)
         else:
             self.current_code_label.setText("Please show a valid code.")
 

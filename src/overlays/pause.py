@@ -64,6 +64,20 @@ class Pause(QWidget):
             main_container_layout.addWidget(self.main_widget)
             main_container_layout.setContentsMargins(0, 0, 0, 0)
             self.setLayout(main_container_layout)
+        
+        highscore_label = OverlayLabel(
+            f"Highscore: {self.parent.highscore}", 
+            parent=self
+        )
+        highscore_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        font = QFont()
+        font.setPointSize(int(self.height * 0.03))  # 3% of height
+        font.setBold(True)
+        font.setFamily("Comic Sans MS")
+        highscore_label.setStyleSheet("color: white")
+        highscore_label.setContentsMargins(50, 0, 0, 0)
+        highscore_label.setFont(font)
+        self.main_layout.addWidget(highscore_label)
 
     def _init_game_modes_overlay(self):
         """Initialize the game modes overlay and connections"""
@@ -90,6 +104,7 @@ class Pause(QWidget):
 
     def _create_buttons(self):
         """Create and arrange all buttons"""
+        
         buttons_container = QWidget()
         buttons_layout = QHBoxLayout(buttons_container)
         buttons_layout.setContentsMargins(0, 0, 0, 0)

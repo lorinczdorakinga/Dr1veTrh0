@@ -27,7 +27,7 @@ class AuthHandler(QMainWindow):
     def setup_ui(self):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 230))
+        palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 200))
         self.setPalette(palette)
         self.setAutoFillBackground(True)
 
@@ -96,7 +96,6 @@ class AuthHandler(QMainWindow):
         self.current_user = None
         self.settings.remove("refresh_token")
         self.switch_to_login()
-        
     def is_user_logged_in(self):
         return self.current_user is not None and 'idToken' in self.current_user
 
