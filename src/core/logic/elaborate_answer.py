@@ -9,6 +9,7 @@ from PyQt6.QtCore import QPoint, QTimer
 from src.overlays.correct_answer import CorrectAnswerOverlay
 from src.overlays.incorrect_answer import IncorrectAnswerOverlay
 from src.overlays.time_is_up import TimeIsUpOverlay
+from src.components.overlay_label import OverlayLabel
 
 class ElaborateAnswer(QWidget):
     def __init__(self, parent=None):
@@ -19,6 +20,7 @@ class ElaborateAnswer(QWidget):
         self.current_code = None
         self.remaining_time = None
         self.current_game_mode = None
+        self.highscore = False
         self.setVisible(False)
         
         if parent:
@@ -27,8 +29,8 @@ class ElaborateAnswer(QWidget):
             self.resize(1280, 960)
             
         self.correct_answer_overlay = CorrectAnswerOverlay(parent=self, code=None)
-        self.incorrect_answer_overlay = IncorrectAnswerOverlay(parent=self, true_code=None, current_code=None)
-        self.time_is_up_overlay = TimeIsUpOverlay(parent=self)
+        self.incorrect_answer_overlay = IncorrectAnswerOverlay(parent=self, true_code=None, current_code=None, highscore=False)
+        self.time_is_up_overlay = TimeIsUpOverlay(parent=self, highscore=False)
         
         self.correct_answer_overlay.hide()
         self.incorrect_answer_overlay.hide()
@@ -88,8 +90,7 @@ class ElaborateAnswer(QWidget):
             self._parent_test.toggle_pause()
 
         if remaining_time <= 0:
-            print("Time is up!")
-            self._parent_test.end_game()
+            self._parent_test.check_and_update_highscore()
             self.show()
             self.raise_()
             self.time_is_up_overlay.show()
@@ -100,15 +101,11 @@ class ElaborateAnswer(QWidget):
             self.current_code = self.shown_code_to_decimal(self.current_code)
             self.true_code = self.binary_array_to_decimal(self.true_code)
         
-        print("LAST CHECK: True: " + str(self.true_code) + " Current: " + str(self.current_code))
         if self.true_code == self.current_code:
-            print("Correct code!")
             if self._parent_test and hasattr(self._parent_test, 'update_timer'):
-                print("Stopping timer")
                 self._parent_test.update_timer.stop()
             if hasattr(self._parent_test, 'reset_timer'):
                 self._parent_test.reset_timer()
-                print("Timer reset after correct answer")
             if self._parent_test and hasattr(self._parent_test, 'correct_answers_count'):
                 self._parent_test.correct_answers_count += 1
                 if hasattr(self._parent_test, 'update_score_display'):
@@ -122,10 +119,9 @@ class ElaborateAnswer(QWidget):
             self.correct_answer_overlay.show()
             self.correct_answer_overlay.raise_()
         else:
-            print("Incorrect code!")
-            self._parent_test.end_game()
+            self.highscore = self._parent_test.check_and_update_highscore()
             if hasattr(self.incorrect_answer_overlay, 'update_code'):
-                self.incorrect_answer_overlay.update_code(self.true_code, self.current_code, current_game_mode)
+                self.incorrect_answer_overlay.update_code(self.true_code, self.current_code, current_game_mode, self.highscore)
                 
             self.show()
             self.raise_()

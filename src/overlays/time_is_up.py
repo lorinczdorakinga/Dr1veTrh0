@@ -6,11 +6,13 @@ from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import QPoint, QTimer
 
 from src.components.overlay_button import OverlayButton
+from src.components.overlay_label import OverlayLabel
 
 class TimeIsUpOverlay(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, highscore=False):
         # Setup
         super().__init__(parent)
+        self.highscore = highscore
         self.parent = parent
         self.width = self.parent.width() if self.parent else 1280
         self.height = self.parent.height() if self.parent else 960
@@ -39,6 +41,12 @@ class TimeIsUpOverlay(QWidget):
         font.setFamily("Comic Sans MS")
         self.label.setFont(font)
         self.label.setStyleSheet("color: white;")
+
+        self.highscore_label = OverlayLabel("New highscore reached!", self)
+        self.highscore_label.setFont(QFont("Comic Sans MS", 24, QFont.Weight.Bold))
+        self.highscore_label.setTextColor(QColor("#FF0000"))  # Bright red for visibility
+        # self.highscore_label.setFixedWidth(self.width // 2)
+        self.highscore_label.hide()
         
         self.play_again = OverlayButton("Play again", self)
         self.play_again.setFixedSize(
@@ -54,6 +62,8 @@ class TimeIsUpOverlay(QWidget):
         layout.addStretch(1)
         layout.addWidget(self.label)
         layout.addStretch(1)
+        layout.addWidget(self.highscore_label, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addStretch(1)
         layout.addWidget(self.play_again, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.main_menu, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addStretch(1)
@@ -64,4 +74,9 @@ class TimeIsUpOverlay(QWidget):
             self.width = self.parent.width()
             self.height = self.parent.height()
             self.resize(self.width, self.height)
+        if self.highscore:
+            self.highscore_label.show()
+            self.highscore_label.raise_()
+            QTimer.singleShot(10000, self.highscore_label.hide)
+
         super().showEvent(event)

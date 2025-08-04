@@ -91,9 +91,24 @@ class FirebaseCRUD:
 
     def refresh_user(self, refresh_token):
         try:
-            return self.client_auth.refresh(refresh_token)
+            refreshed_user = self.client_auth.refresh(refresh_token)
+            return refreshed_user
         except Exception as e:
-            print(f"Refresh failed: {e}")
+            error_str = str(e)
+            if "TOKEN_EXPIRED" in error_str or "INVALID_REFRESH_TOKEN" in error_str:
+                print("Refresh token expired. User needs to log in again.")
+                return "TOKEN_EXPIRED"
+            else:
+                print(f"Refresh failed: {e}")
+                return None
+        
+    def reauthenticate_user(self, email, password):
+        """Re-authenticate user to refresh credentials"""
+        try:
+            user = self.client_auth.sign_in_with_email_and_password(email, password)
+            return user
+        except Exception as e:
+            print(f"Re-authentication failed: {e}")
             return None
 
     def get_account_info(self, id_token):
@@ -120,6 +135,42 @@ class FirebaseCRUD:
             return True
         except Exception as e:
             return False
+        
+    def send_email_verification(self, id_token):
+        """Send email verification to current user"""
+        import requests
+        api_key = self.client_config['apiKey']
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}"
+        payload = {
+            "requestType": "VERIFY_EMAIL",
+            "idToken": id_token
+        }
+        
+        try:
+            response = requests.post(url, json=payload)
+            result = response.json()
+            
+            if response.status_code == 200:
+                return True
+            else:
+                print(f"Email verification error: {result.get('error', {}).get('message', 'Unknown error')}")
+                return False
+        except Exception as e:
+            print(f"Request error: {str(e)}")
+            return False
+        
+    def get_user_highscore_by_mode(self, uid, game_mode):
+        """Get specific highscore for a user and game mode"""
+        try:
+            user_ref = db.reference(f'users/{uid}')
+            user_data = user_ref.get()
+            if user_data:
+                highscore_key = f'{game_mode}_mode_highscore'
+                return user_data.get(highscore_key, 0)
+            return 0
+        except Exception as e:
+            print(f"Error getting user highscore: {e}")
+            return 0
 
     def update_highscore(self, uid, game_mode, score, email):
         try:
@@ -128,7 +179,7 @@ class FirebaseCRUD:
             current_data = user_ref.get()
             current_score = current_data.get(f'{game_mode}_highscore', 0)
             if score > current_score:
-                user_ref.update({f'{game_mode}_highscore': score})
+                user_ref.update({f'{game_mode}_mode_highscore': score})
                 print(f"Updated {game_mode} highscore for user {uid}: {score}")
         except Exception as e:
             print(f"Error updating highscore: {e}")
@@ -138,16 +189,40 @@ class FirebaseCRUD:
         api_key = self.client_config['apiKey']
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:update?key={api_key}"
         payload = {"idToken": id_token, "email": new_email, "returnSecureToken": True}
-        response = requests.post(url, json=payload)
-        return response.json() if response.status_code == 200 else None
+        
+        try:
+            response = requests.post(url, json=payload)
+            result = response.json()
+            
+            if response.status_code == 200:
+                return result
+            else:
+                # Log the specific error for debugging
+                print(f"Firebase error: {result.get('error', {}).get('message', 'Unknown error')}")
+                return None
+        except Exception as e:
+            print(f"Request error: {str(e)}")
+            return None
 
     def update_user_password(self, id_token, new_password):
         import requests
         api_key = self.client_config['apiKey']
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:update?key={api_key}"
         payload = {"idToken": id_token, "password": new_password, "returnSecureToken": True}
-        response = requests.post(url, json=payload)
-        return response.json() if response.status_code == 200 else None
+        
+        try:
+            response = requests.post(url, json=payload)
+            result = response.json()
+            
+            if response.status_code == 200:
+                return result
+            else:
+                # Log the specific error for debugging
+                print(f"Firebase error: {result.get('error', {}).get('message', 'Unknown error')}")
+                return None
+        except Exception as e:
+            print(f"Request error: {str(e)}")
+            return None
 
     def get_user_records(self, uid):
         try:
@@ -156,3 +231,51 @@ class FirebaseCRUD:
         except Exception as e:
             print(f"Error getting user records: {e}")
             return None
+        
+    def refresh_id_token(self, refresh_token):
+        import requests
+        api_key = self.client_config['apiKey']
+        url = f"https://securetoken.googleapis.com/v1/token?key={api_key}"
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token
+        }
+        
+        try:
+            response = requests.post(url, json=payload)
+            if response.status_code == 200:
+                result = response.json()
+                return {
+                    'idToken': result['id_token'],
+                    'refreshToken': result['refresh_token']
+                }
+        except Exception as e:
+            print(f"Token refresh error: {str(e)}")
+        
+        return None
+    def ensure_valid_token(self, user_data, email=None, password=None):
+        """
+        Ensures we have a valid token, refreshing if possible or requiring re-auth
+        Returns: (valid_token, updated_user_data) or (None, None) if re-auth needed
+        """
+        if not user_data or 'idToken' not in user_data:
+            return None, None
+        
+        # First, try to refresh the existing token
+        if 'refreshToken' in user_data:
+            refresh_result = self.refresh_user(user_data['refreshToken'])
+            
+            if refresh_result and refresh_result != "TOKEN_EXPIRED":
+                # Successfully refreshed
+                user_data['idToken'] = refresh_result['idToken']
+                user_data['refreshToken'] = refresh_result['refreshToken']
+                return refresh_result['idToken'], user_data
+            elif refresh_result == "TOKEN_EXPIRED":
+                print("Refresh token expired. Need to re-authenticate.")
+                # If we have email and password, try to re-authenticate
+                if email and password:
+                    reauth_result = self.reauthenticate_user(email, password)
+                    if reauth_result:
+                        return reauth_result['idToken'], reauth_result
+        
+        return None, None
