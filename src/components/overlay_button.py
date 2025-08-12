@@ -1,6 +1,9 @@
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtGui import QFont, QPixmap, QPainter, QTransform
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from src.core.logic.abstract_functions import get_resource_path
+
 
 class OverlayButton(QPushButton):
     def __init__(self, text, parent=None, path=None):
@@ -34,6 +37,7 @@ class OverlayButton(QPushButton):
         else:
             # Apply styling for when no image is used
             self.setDefaultStyle()
+        self._setup_sound()
 
 
     def paintEvent(self, event):
@@ -54,12 +58,6 @@ class OverlayButton(QPushButton):
         else:
             # If no image, just use the default paint event
             super().paintEvent(event)
-
-    # def setText(self, text):
-    #     self.text = text
-    #     self.adjustSize()
-    #     self.updateGeometry()
-    #     self.update()
 
     def update_image(self, new_image_path):
         """Update the button's image to a new one"""
@@ -136,3 +134,19 @@ class OverlayButton(QPushButton):
             font-size: 22pt;
         }
         """)
+
+    def _setup_sound(self):
+        # Initialize QMediaPlayer for sound playback
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        # Set the sound file (adjust 'click.mp3' to your desired file)
+        sound_path = get_resource_path("assets/sounds/click.mp3")
+        self.player.setSource(QUrl.fromLocalFile(sound_path))
+        # Connect clicked signal to play sound
+        self.clicked.connect(self.play_click_sound)
+
+    def play_click_sound(self):
+        # Play the sound
+        self.player.stop()  # Ensure no overlap
+        self.player.play()

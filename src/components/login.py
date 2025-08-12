@@ -36,6 +36,7 @@ class UserAuth(QWidget):
             self.parent.set_current_user(res)
             self.parent.user_page.update_user_data()
             self.parent.switch_to_user_page()
+            self.parent.user_logged_in.emit()
         else:
             error_msg = res if isinstance(res, str) else "Login failed. Please check your credentials."
             show_notification("Error", error_msg)
@@ -175,3 +176,6 @@ class UserAuth(QWidget):
         else:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
+
+    def mousePressEvent(self, event):
+        self.parent.hide()

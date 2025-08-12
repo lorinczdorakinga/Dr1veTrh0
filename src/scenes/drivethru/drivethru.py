@@ -10,6 +10,8 @@ class DriveThruGame(QWidget):
         self.height = height
         self.setFixedSize(self.width, self.height)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Allow clicks to pass through
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # Enable key events
+        self.setFocus()  # Ensure initial focus
 
         self.x = float(self.width)  # Start off-screen
         self.y = int(self.height * 0.125)  # 12.5% of height (50/400)
@@ -37,6 +39,8 @@ class DriveThruGame(QWidget):
         self.paused = paused
         if not paused and self.middle_reached and self.order_start_time is None:
             self.order_start_time = QTime.currentTime()
+        if not paused:
+            self.setFocus()  # Restore focus when unpaused
 
     def update(self, seconds_to_order):
         """Update game state"""
@@ -62,6 +66,17 @@ class DriveThruGame(QWidget):
             self.x = float(self.width)
 
         self.update(self.seconds_to_order)
+
+    def keyPressEvent(self, event):
+        """Handle key press events"""
+        if event.key() == Qt.Key.Key_Space:
+            middle_x = self.width / 2 - (self.car_image.width() / 2)
+            self.x = middle_x
+            self.middle_reached = True
+            self.order_start_time = QTime.currentTime()
+            self.update(self.seconds_to_order)
+            if self.parent():  # Check if parent exists
+                self.parent().setFocus()  # Set focus to parent widget
 
     def process_events(self):
         """Process timer events"""
@@ -93,6 +108,7 @@ class DriveThruGame(QWidget):
         self.middle_reached = False
         self.order_start_time = None
         self.x = float(self.width)
+        self.setFocus()  # Restore focus after reset
 
     def set_order_time(self, time):
         """Set the order time in seconds"""

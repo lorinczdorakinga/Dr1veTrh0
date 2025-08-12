@@ -18,7 +18,6 @@ class Register(QWidget):
         self.fdb = FirebaseCRUD()
 
     def _setup_ui(self):
-        """Initialize the basic UI components"""
         self.main_widget = QWidget()
         self.main_layout = QVBoxLayout(self.main_widget)
         self.main_layout.setSpacing(20)
@@ -38,7 +37,7 @@ class Register(QWidget):
         if password != confirm_password:
             show_notification("Error", "Passwords do not match.")
             return
-        if not email.__contains__("@") and  not email.__contains__("."):
+        if not email.__contains__("@") and not email.__contains__("."):
             show_notification("Error", "Please enter a valid email address.")
             return
 
@@ -57,7 +56,6 @@ class Register(QWidget):
         self.parent.exit_widget()
 
     def _initialize_elements(self):
-        """Create and arrange all buttons and input fields """
         central_width = 500
         central_widget = QWidget()
         central_widget.setFixedWidth(central_width)
@@ -230,7 +228,6 @@ class Register(QWidget):
         self.parent.switch_to_login()
 
     def toggle_password_visibility(self, event):
-        """Toggle the visibility of the password"""
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.visibility_icon.setPixmap(QPixmap(self.visible_path).scaled(24, 24))
@@ -239,10 +236,12 @@ class Register(QWidget):
             self.visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
 
     def toggle_confirm_password_visibility(self, event):
-        """Toggle the visibility of the confirm password"""
         if self.confirm_password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.confirm_password_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.confirm_visibility_icon.setPixmap(QPixmap(self.visible_path).scaled(24, 24))
         else:
             self.confirm_password_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.confirm_visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
+
+    def mousePressEvent(self, event):
+        self.parent.hide()

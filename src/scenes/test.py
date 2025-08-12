@@ -128,7 +128,7 @@ class Test(QWidget):
     def _configure_mode_settings(self):
         mode_configs = {
             "reverse": {"time": 20, "button_text": "Wink to validate", "hands": 2, "enabled": False},
-            "default": {"time": 20, "button_text": "Validate", "hands": 1, "enabled": True},
+            "default": {"time": 100, "button_text": "Validate", "hands": 1, "enabled": True},
             "double_trouble": {"time": 60, "button_text": "Wink to validate", "hands": 2, "enabled": False},
             "speedrun": {"time": 10, "button_text": "Validate", "hands": 1, "enabled": True}
         }
@@ -170,9 +170,11 @@ class Test(QWidget):
             self.toggle_pause(pause_overlay=True)
         super().keyPressEvent(event)
 
+
     def toggle_pause(self, pause_overlay=None):
         current_time = QTime.currentTime()
         if self.game_playing:
+            # Pause logic (unchanged)
             if hasattr(self.scene1_widget, 'get_remaining_time'):
                 self.paused_remaining_time = self.scene1_widget.get_remaining_time() / 1000
             self.timer_label.setText(f"Time: {self.paused_remaining_time:.1f}s")
@@ -190,6 +192,7 @@ class Test(QWidget):
             self.pause_start_time = current_time
             print(f"Game paused at {current_time.toString('hh:mm:ss.zzz')} with {self.paused_remaining_time:.1f}s remaining")
         else:
+            # Resume logic
             pause_duration = self.pause_start_time.msecsTo(current_time)
             print(f"Game resumed after {pause_duration}ms pause with {self.paused_remaining_time:.1f}s remaining")
             order_window = self.scene1_widget.order_window
@@ -201,7 +204,12 @@ class Test(QWidget):
             self.update_timer.start()
             self.scene1_widget.raise_()
             self.scene2_widget.raise_()
-            self.pause_game.hide()
+            self.pause_game.hide()  # Hide the pause overlay
+            # Set focus with a slight delay to ensure UI updates are processed
+            if self.current_scene == "drive_thru":
+                QTimer.singleShot(0, lambda: self.scene1_widget.order_window.setFocus())
+            else:
+                QTimer.singleShot(0, lambda: self.scene2_widget.setFocus())
         self.game_playing = not self.game_playing
 
     def back_to_menu(self):

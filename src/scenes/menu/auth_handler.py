@@ -8,6 +8,8 @@ from src.components.login import UserAuth
 from src.components.user_page import UserPage
 from src.components.register import Register
 from src.components.forgot_password import ForgotPassword
+from src.components.change_password import ChangePassword
+from src.components.change_email import ChangeEmail
 
 class AuthHandler(QMainWindow):
     user_logged_in = pyqtSignal()
@@ -43,11 +45,16 @@ class AuthHandler(QMainWindow):
         self.register_page = Register(self)
         self.user_page = UserPage(self)
         self.forgot_password_page = ForgotPassword(self)
+        self.change_email_page = ChangeEmail(self)
+        self.change_password_page = ChangePassword(self)
+
 
         self.stacked_widget.addWidget(self.login_page)
         self.stacked_widget.addWidget(self.forgot_password_page)
         self.stacked_widget.addWidget(self.register_page)
         self.stacked_widget.addWidget(self.user_page)
+        self.stacked_widget.addWidget(self.change_email_page)
+        self.stacked_widget.addWidget(self.change_password_page)
 
     def showEvent(self, event):
         if self.parent:
@@ -96,6 +103,7 @@ class AuthHandler(QMainWindow):
         self.current_user = None
         self.settings.remove("refresh_token")
         self.switch_to_login()
+        self.user_logged_out.emit()
     def is_user_logged_in(self):
         return self.current_user is not None and 'idToken' in self.current_user
 
@@ -110,6 +118,12 @@ class AuthHandler(QMainWindow):
 
     def switch_to_user_page(self):
         self.stacked_widget.setCurrentWidget(self.user_page)
+
+    def switch_to_change_email(self):
+        self.stacked_widget.setCurrentWidget(self.change_email_page)
+
+    def switch_to_change_password(self):
+        self.stacked_widget.setCurrentWidget(self.change_password_page)
 
     def exit_widget(self):
         self.close()
