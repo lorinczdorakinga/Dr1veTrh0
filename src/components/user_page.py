@@ -8,9 +8,10 @@ from src.components.notification import show_notification
 from src.core.logic.abstract_functions import get_resource_path
 
 class UserPage(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager
         self._setup_ui()
         self._initialize_elements()
 
@@ -91,7 +92,7 @@ class UserPage(QWidget):
         """)
         email_layout.addWidget(self.email_input, stretch=1)
         
-        change_email_button = OverlayButton("Change Email")
+        change_email_button = OverlayButton("Change Email", sound_manager=self.sound_manager)
         change_email_button.clicked.connect(self.parent.switch_to_change_email)
         email_layout.addWidget(change_email_button, stretch=0)
 
@@ -122,14 +123,14 @@ class UserPage(QWidget):
         """)
         password_layout.addWidget(self.password_input, stretch=1)
 
-        change_password_button = OverlayButton("Change Password")
+        change_password_button = OverlayButton("Change Password", sound_manager=self.sound_manager)
         change_password_button.clicked.connect(self.parent.switch_to_change_password)
         password_layout.addWidget(change_password_button, stretch=0)
 
-        logout_button = OverlayButton("Log Out")
+        logout_button = OverlayButton("Log Out", sound_manager=self.sound_manager)
         logout_button.clicked.connect(self.logout)
 
-        back_button = OverlayButton("Back")
+        back_button = OverlayButton("Back", sound_manager=self.sound_manager)
         back_button.clicked.connect(self.back)        
 
         central_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)

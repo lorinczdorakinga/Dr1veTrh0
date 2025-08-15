@@ -8,9 +8,10 @@ from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 
 class ChangePassword(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager
         self.fdb = FirebaseCRUD()
         self._setup_ui()
         self._initialize_elements()
@@ -95,12 +96,12 @@ class ChangePassword(QWidget):
         new_password_layout.addWidget(dummy_label_new, stretch=0)
         central_layout.addLayout(new_password_layout)
 
-        change_button = OverlayButton("Change Password")
+        change_button = OverlayButton("Change Password", sound_manager=self.sound_manager)
         change_button.clicked.connect(self.change_password_fn)
         central_layout.addWidget(change_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addStretch()
 
-        back_button = OverlayButton("Back")
+        back_button = OverlayButton("Back", sound_manager=self.sound_manager)
         back_button.clicked.connect(self.back)
         back_layout = QHBoxLayout()
         back_layout.addStretch()

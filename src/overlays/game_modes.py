@@ -2,13 +2,15 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal, QEvent, QSize
 from PyQt6.QtGui import QPalette, QColor
 from src.components.overlay_button import OverlayButton
+from src.core.logic.sound_manager import SoundManager
 
 class GameModes(QWidget):
     mode_selected = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager or SoundManager.get_instance(parent)
         self.active_mode = None
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAutoFillBackground(True)
@@ -29,10 +31,10 @@ class GameModes(QWidget):
         buttons_column_layout.setSpacing(20)
 
         self.mode_buttons = {
-            "default": OverlayButton("Default", self),
-            "reverse": OverlayButton("Reverse", self),
-            "double_trouble": OverlayButton("Double trouble", self),
-            "speedrun": OverlayButton("Speedrun", self)
+            "default": OverlayButton("Default", parent=self, sound_manager=self.sound_manager),
+            "reverse": OverlayButton("Reverse", parent=self, sound_manager=self.sound_manager),
+            "double_trouble": OverlayButton("Double trouble", parent=self, sound_manager=self.sound_manager),
+            "speedrun": OverlayButton("Speedrun", parent=self, sound_manager=self.sound_manager)
         }
 
         for mode, button in self.mode_buttons.items():
@@ -44,6 +46,7 @@ class GameModes(QWidget):
         layout.addStretch(1)
         layout.addWidget(buttons_container)
         layout.addStretch(1)
+
         self.set_active_mode("default")
 
     def _handle_mode_click(self, mode):

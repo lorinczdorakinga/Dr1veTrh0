@@ -10,9 +10,10 @@ from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 
 class Register(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager
         self._setup_ui()
         self._initialize_elements()
         self.fdb = FirebaseCRUD()
@@ -176,7 +177,7 @@ class Register(QWidget):
         confirm_password_layout.addWidget(self.confirm_visibility_icon, stretch=0)
         central_layout.addLayout(confirm_password_layout)
 
-        register_button = OverlayButton("Register")
+        register_button = OverlayButton("Register", sound_manager=self.sound_manager)
         register_button.clicked.connect(lambda: self.register_fn(
             self.username_input.text(), 
             self.email_input.text(), 
@@ -188,7 +189,7 @@ class Register(QWidget):
 
         login_layout = QVBoxLayout()
         login_layout.addStretch()
-        login_button = OverlayButton("Already have an account? Sign In")
+        login_button = OverlayButton("Already have an account? Sign In", sound_manager=self.sound_manager)
         login_button.setFlat(True)
         font = login_button.font()
         font.setUnderline(True)
@@ -208,7 +209,7 @@ class Register(QWidget):
         login_layout.addWidget(login_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addLayout(login_layout)
 
-        back_button = OverlayButton("Back")
+        back_button = OverlayButton("Back", sound_manager=self.sound_manager)
         back_button.clicked.connect(self.back)
         back_layout = QHBoxLayout()
         back_layout.addStretch()

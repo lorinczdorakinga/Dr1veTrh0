@@ -11,9 +11,10 @@ from src.components.forgot_password import ForgotPassword
 from src.components.register import Register
 
 class UserAuth(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager
         self._setup_ui()
         self._initialize_elements()
 
@@ -122,14 +123,14 @@ class UserAuth(QWidget):
         password_layout.addWidget(self.visibility_icon, stretch=0)
         central_layout.addLayout(password_layout)
 
-        login_button = OverlayButton("Log in")
+        login_button = OverlayButton("Log in", sound_manager=self.sound_manager)
         login_button.clicked.connect(lambda: self.login_fn(self.username_input.text(), self.password_input.text()))
         central_layout.addWidget(login_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addStretch()
 
         forgot_layout = QVBoxLayout()
         forgot_layout.addStretch()
-        forgot_button = OverlayButton("Forgot Password?")
+        forgot_button = OverlayButton("Forgot Password?", sound_manager=self.sound_manager)
         forgot_button.setFlat(True)
         font = forgot_button.font()
         font.setUnderline(True)
@@ -149,11 +150,11 @@ class UserAuth(QWidget):
         forgot_layout.addWidget(forgot_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addLayout(forgot_layout)
 
-        register_button = OverlayButton("Register now")
+        register_button = OverlayButton("Register now", sound_manager=self.sound_manager)
         register_button.clicked.connect(self.register_fn)
         central_layout.addWidget(register_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        back_button = OverlayButton("Back")
+        back_button = OverlayButton("Back", sound_manager=self.sound_manager)
         back_button.clicked.connect(self.back)
         back_layout = QHBoxLayout()
         back_layout.addStretch()

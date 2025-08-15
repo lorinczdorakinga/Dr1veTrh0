@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QColor, QPalette, QFont
 import sys
-
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 from src.overlays.game_modes import GameModes
@@ -19,12 +18,14 @@ class Pause(QWidget):
         None: "Default"
     }
 
-    def __init__(self, parent=None, current_game_mode=None):
+    def __init__(self, parent=None, current_game_mode=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
         self.current_game_mode = self._determine_initial_mode(current_game_mode)
         self.width = self.parent.width() if self.parent else 1280
         self.height = self.parent.height() if self.parent else 960
+
+        self.sound_manager = sound_manager
         
         self._setup_ui()
         self._init_game_modes_overlay()
@@ -149,6 +150,8 @@ class Pause(QWidget):
         if self.parent and hasattr(self.parent, 'current_game_mode'):
             self.parent.current_game_mode = self.current_game_mode
 
+        self.play_again_fn()
+
     def update_game_mode_label(self):
         """Update the game mode label with the current mode"""
         display_text = self.MODE_DISPLAY_NAMES.get(self.current_game_mode, "Default")
@@ -182,6 +185,11 @@ class Pause(QWidget):
 
     def play_again_fn(self):
         """Handle play again action"""
+        if self.sound_manager:
+            self.sound_manager.stop_all()
+            QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.game_start))
+            self.sound_manager.play_music(self.sound_manager.in_game_music)
+
         if hasattr(self.parent, 'elaborate_answer'):
             self.parent.elaborate_answer.retry_game_fn()
         self.hide()
@@ -190,9 +198,11 @@ class Pause(QWidget):
         """Return to main menu"""
         from src.scenes.menu.menu_window import Menu
         self.hide()
+        if self.sound_manager:
+            self.sound_manager.stop_all()
         if self.parent:
             self.parent.close()
-        self.menu = Menu()
+        self.menu = Menu(sound_manager=self.sound_manager)
         self.menu.showFullScreen()
 
     def quit_game_fn(self):

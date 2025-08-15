@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
 from PyQt6.QtCore import Qt, QPoint, QTimer, QTime
+from PyQt6.QtMultimedia import QMediaPlayer
 
 from src.core.logic.abstract_functions import get_resource_path
 from src.components.overlay_label import OverlayLabel
@@ -20,10 +21,11 @@ from .kitchen.kitchen import Kitchen
 from src.components.camera import Camera_Widget
 
 class Test(QWidget):
-    def __init__(self, auth_handler, current_game_mode=None):
+    def __init__(self, auth_handler, current_game_mode=None, sound_manager=None):
         super().__init__()
         self.auth_handler = auth_handler
         self.current_game_mode = current_game_mode
+        self.sound_manager = sound_manager
         self.highscore = self.get_user_highscore()
         self._setup_screen()
         self._initialize_ui()
@@ -44,10 +46,8 @@ class Test(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
-
         self.stacked_layout = QStackedLayout()
         self._add_scenes()
-
         self.game_container = QWidget()
         self.game_container.setLayout(self.stacked_layout)
         self.main_layout.addWidget(self.game_container)
@@ -63,40 +63,31 @@ class Test(QWidget):
     def _setup_overlays(self):
         self.daily_deals = DailyDealsLabel(self, current_game_mode=self.current_game_mode)
         self.daily_deals.move(self.screen_width - self.daily_deals.width() - 50, 310)
-
         self.customer_order = CustomerOrder(self)
         self.customer_order.move(350, 350)
-
         self.camera_widget = Camera_Widget(self)
         self.elaborate_answer = ElaborateAnswer(self)
         self.elaborate_answer.resize(self.screen_width, self.screen_height)
-
-        self.validate_code_button = OverlayButton("", self)
+        self.validate_code_button = OverlayButton("Validate", parent=self, sound_manager=self.sound_manager)
         self.validate_code_button.resize(200, 60)
         self.validate_code_button.move(self.screen_width - 200 - 50, self.screen_height - 360)
         self.validate_code_button.clicked.connect(self.validate_current_code)
-
-        self.change_button = OverlayButton("", self, get_resource_path("img/arrow_right.png"))
+        self.change_button = OverlayButton("", parent=self, path=get_resource_path("img/arrow_right.png"), sound_manager=self.sound_manager)
         self.change_button.clicked.connect(self.toggle_scenes)
         self.change_button.move(self.screen_width - 150 - 50, self.screen_height - 200)
         self.change_button.resize(150, 100)
-
-        self.timer_label = OverlayLabel("", self, get_resource_path("img/timer.jpg"))
+        self.timer_label = OverlayLabel("", parent=self, path=get_resource_path("img/timer.jpg"))
         self.timer_label.move(150, 50)
-
         self.correct_answers_count = 0
-        self.score_label = OverlayLabel(f"Score: {self.correct_answers_count}", self, get_resource_path("img/timer.jpg"))
+        self.score_label = OverlayLabel(f"Score: {self.correct_answers_count}", parent=self, path=get_resource_path("img/timer.jpg"))
         self.score_label.move(self.screen_width - self.score_label.width() - 100, 50)
-
         self.game_playing = True
-        self.pause_game = Pause(self)
+        self.pause_game = Pause(parent=self, sound_manager=self.sound_manager)
         self.pause_game.resize(self.screen_width, self.screen_height)
         self.pause_game.hide()
-
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_time_display)
         self.update_timer.start(1000 // 60)
-
         self.game_start_time = QTime.currentTime()
 
     def _configure_initial_state(self):
@@ -133,16 +124,14 @@ class Test(QWidget):
             "speedrun": {"time": 10, "button_text": "Validate", "hands": 1, "enabled": True}
         }
         config = mode_configs.get(self.current_game_mode, mode_configs["default"])
-
         self._set_order_time(config["time"])
         self.validate_code_button.setText(config["button_text"])
         self.validate_code_button.setEnabled(config["enabled"])
         if config["hands"] > 1 and hasattr(self.camera_widget, 'update_number_of_hands'):
             self.camera_widget.update_number_of_hands(config["hands"])
-
         self.code = self.decimal_code if self.current_game_mode == "reverse" else self.decimal_to_binary_array(self.decimal_code)
         self.image_index = 0
-        self.dec_imal_code = 0
+        self.decimal_code = 0
         if self.current_game_mode == "double_trouble":
             self.update_orders()
         print(f"{self.current_game_mode.capitalize()} mode initialized with {config['time']}s order time")
@@ -167,14 +156,14 @@ class Test(QWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape and self.elaborate_answer.isHidden():
             self.last_pause_time = QTime.currentTime()
+            if self.sound_manager:
+                QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.button_click))
             self.toggle_pause(pause_overlay=True)
         super().keyPressEvent(event)
-
 
     def toggle_pause(self, pause_overlay=None):
         current_time = QTime.currentTime()
         if self.game_playing:
-            # Pause logic (unchanged)
             if hasattr(self.scene1_widget, 'get_remaining_time'):
                 self.paused_remaining_time = self.scene1_widget.get_remaining_time() / 1000
             self.timer_label.setText(f"Time: {self.paused_remaining_time:.1f}s")
@@ -190,9 +179,11 @@ class Test(QWidget):
             self.score_label.raise_()
             self.timer_label.raise_()
             self.pause_start_time = current_time
+            # Stop ticking sound when pausing
+            if self.sound_manager and self.sound_manager.time_ticking.isPlaying():
+                self.sound_manager.time_ticking.stop()
             print(f"Game paused at {current_time.toString('hh:mm:ss.zzz')} with {self.paused_remaining_time:.1f}s remaining")
         else:
-            # Resume logic
             pause_duration = self.pause_start_time.msecsTo(current_time)
             print(f"Game resumed after {pause_duration}ms pause with {self.paused_remaining_time:.1f}s remaining")
             order_window = self.scene1_widget.order_window
@@ -204,17 +195,19 @@ class Test(QWidget):
             self.update_timer.start()
             self.scene1_widget.raise_()
             self.scene2_widget.raise_()
-            self.pause_game.hide()  # Hide the pause overlay
-            # Set focus with a slight delay to ensure UI updates are processed
+            self.pause_game.hide()
             if self.current_scene == "drive_thru":
                 QTimer.singleShot(0, lambda: self.scene1_widget.order_window.setFocus())
             else:
                 QTimer.singleShot(0, lambda: self.scene2_widget.setFocus())
+            # Resume ticking sound when unpausing (if there's time remaining)
+            if self.sound_manager and self.remaining_time > 0:
+                self.sound_manager.time_ticking.play()
         self.game_playing = not self.game_playing
 
     def back_to_menu(self):
         from src.scenes.menu.menu_window import Menu
-        self.menu = Menu()
+        self.menu = Menu(sound_manager=self.sound_manager)
         self.menu.show()
         self.close()
 
@@ -281,9 +274,16 @@ class Test(QWidget):
             self.timer_label.update()
             if previous_time > 0:
                 self.had_active_order = True
+                # Play ticking sound if not already playing
+                if self.sound_manager and not self.sound_manager.time_ticking.isPlaying():
+                    self.sound_manager.time_ticking.play()
             if self.remaining_time <= 0 and not self.elaborate_answer.isVisible() and previous_time > 0:
                 self.validate_current_code()
+                # Stop ticking sound
+                if self.sound_manager and self.sound_manager.time_ticking.isPlaying():
+                    self.sound_manager.time_ticking.stop()
             self._update_scene_ui()
+
 
     def _update_scene_ui(self):
         if self.current_scene == "drive_thru":
@@ -305,10 +305,12 @@ class Test(QWidget):
         order_window.reset_timer()
         order_window.middle_reached = False
         order_window.order_start_time = QTime.currentTime()
-        order_window.x -= order_window.speed
         self.remaining_time = 0
         self.timer_label.text = f"Time: {self.remaining_time:.1f}s"
         self.timer_label.update()
+        # Stop ticking sound when resetting timer
+        if self.sound_manager and self.sound_manager.time_ticking.isPlaying():
+            self.sound_manager.time_ticking.stop()
         print("Timer reset to 0")
         self._update_scene_ui()
 
@@ -371,5 +373,3 @@ class Test(QWidget):
             self.auth_handler.current_user[highscore_key] = current_score
             return True
         return False
-
-    

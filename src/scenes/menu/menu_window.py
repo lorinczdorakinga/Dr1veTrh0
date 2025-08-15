@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPu
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QPixmap, QFont, QPalette, QBrush
 import sys
-
 from src.core.logic.abstract_functions import get_resource_path
 from src.scenes.menu.auth_handler import AuthHandler
 from src.components.overlay_button import OverlayButton
@@ -12,27 +11,35 @@ from src.overlays.game_modes import GameModes
 from src.overlays.help import Help
 
 class Menu(QMainWindow):
-    def __init__(self, parent=None):
-        super().__init__()
-        self.auth_handler = AuthHandler(self)  # Initialize AuthHandler to check session
+    def __init__(self, sound_manager=None, parent=None):
+        super().__init__(parent)
+        self.sound_manager = sound_manager
+        self.auth_handler = AuthHandler(self, sound_manager=self.sound_manager)
         self._setup_ui()
         self._initialize_elements()
 
-        # Connect signals for dynamic updates
+        if self.sound_manager:
+            QTimer.singleShot(100, self._play_lobby_music)
+
         self.auth_handler.user_logged_in.connect(self.update_auth_button)
         self.auth_handler.user_logged_out.connect(self.update_auth_button)
-
+        
         self.showFullScreen()
 
+    def _play_lobby_music(self):
+        if self.sound_manager:
+            self.sound_manager.play_music(self.sound_manager.lobby_music)
+        else:
+            print("Warning: No SoundManager, cannot play lobby music")
+
+    # ... (rest of the file unchanged, included for completeness)
     def _initialize_elements(self):
-        # Create the main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
-        main_layout.setSpacing(int(self.height * 0.02))  # 2% of screen height
+        main_layout.setSpacing(int(self.height * 0.02))
 
-        # Initialize overlays
-        self.game_modes_overlay = GameModes(self)
+        self.game_modes_overlay = GameModes(self, sound_manager=self.sound_manager)
         self.game_modes_overlay.setGeometry(
             int(self.width * 0.25),
             int(self.height * 0.25),
@@ -41,46 +48,39 @@ class Menu(QMainWindow):
         )
         self.game_modes_overlay.mode_selected.connect(self.set_game_mode)
 
-        # Buttons Container Widget with HBoxLayout
         buttons_container = QWidget()
         buttons_layout = QHBoxLayout(buttons_container)
-
-        # Left spacer to push buttons right
         spacer_widget = QWidget()
         spacer_widget.setFixedWidth(int(self.width * 0.06))
         buttons_layout.addWidget(spacer_widget)
 
-        # Buttons Column Container
         buttons_column = QWidget()
         buttons_column_layout = QVBoxLayout(buttons_column)
         buttons_column_layout.setSpacing(int(self.height * 0.04))
 
-        # Create buttons with responsive sizing
         button_width = int(self.width * 0.2)
         button_height = int(self.height * 0.08)
 
-        # Set auth button based on login status
-        self.auth = OverlayButton("thinking")
+        self.auth = OverlayButton("Loading...", sound_manager=self.sound_manager, parent=self)
         self.auth.setFixedSize(button_width, button_height)
         self.check_if_user_logged_in()
 
-        self.start = OverlayButton("Start")
+        self.start = OverlayButton("Start", sound_manager=self.sound_manager, parent=self)
         self.start.clicked.connect(self.open_game_fn)
         self.start.setFixedSize(button_width, button_height)
 
-        self.game_modes_button = OverlayButton("Game Modes")
+        self.game_modes_button = OverlayButton("Game Modes", sound_manager=self.sound_manager, parent=self)
         self.game_modes_button.clicked.connect(self.game_modes_fn)
         self.game_modes_button.setFixedSize(button_width, button_height)
 
-        self.help = OverlayButton("Help")
+        self.help = OverlayButton("Help", sound_manager=self.sound_manager, parent=self)
         self.help.clicked.connect(self.help_fn)
         self.help.setFixedSize(button_width, button_height)
 
-        self.quit = OverlayButton("Quit")
+        self.quit = OverlayButton("Quit", sound_manager=self.sound_manager, parent=self)
         self.quit.clicked.connect(self.quit_fn)
         self.quit.setFixedSize(button_width, button_height)
 
-        # Add buttons to the column layout
         buttons_column_layout.addWidget(self.start)
         buttons_column_layout.addWidget(self.game_modes_button)
         buttons_column_layout.addWidget(self.help)
@@ -90,7 +90,6 @@ class Menu(QMainWindow):
         buttons_layout.addWidget(buttons_column, alignment=Qt.AlignmentFlag.AlignLeft)
         buttons_layout.addStretch()
 
-        # Credit label
         self.credit = OverlayLabel("Made by Lorincz Dora-Kinga")
         self.credit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.credit.setTextColor("black")
@@ -98,8 +97,8 @@ class Menu(QMainWindow):
         font.setPointSize(int(self.height * 0.02))
         self.credit.setFont(font)
 
+        self.help_overlay = Help(self, sound_manager=self.sound_manager)
         self.game_modes_overlay.hide()
-        self.help_overlay = Help(self)
         self.help_overlay.hide()
 
         main_layout.addWidget(self.auth, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
@@ -154,7 +153,12 @@ class Menu(QMainWindow):
 
     def open_game_fn(self):
         print(f"Starting game with {self.current_game_mode} mode")
-        self.game = Test(auth_handler=self.auth_handler, current_game_mode=self.current_game_mode)        
+        print("Playing game_start.wav")
+        if self.sound_manager:
+            self.sound_manager.stop_all()
+            QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.game_start))
+            QTimer.singleShot(200, lambda: self.sound_manager.play_music(self.sound_manager.in_game_music))
+        self.game = Test(auth_handler=self.auth_handler, current_game_mode=self.current_game_mode, sound_manager=self.sound_manager)
         if hasattr(self.game, 'set_game_mode'):
             self.game.set_game_mode(self.current_game_mode)
         self.game.showFullScreen()
@@ -180,6 +184,7 @@ class Menu(QMainWindow):
         else:
             self.auth.setText("Log in / Sign up")
             self.auth.clicked.connect(self.auth_fn)
+
     def auth_fn(self):
         self.auth_handler.switch_to_login()
         self.auth_handler.show()
@@ -197,6 +202,7 @@ class Menu(QMainWindow):
 
     def quit_fn(self):
         print("Quitting...")
+        self.sound_manager.button_click.play()
         self.close()
         sys.exit()
 

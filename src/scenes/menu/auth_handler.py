@@ -15,9 +15,10 @@ class AuthHandler(QMainWindow):
     user_logged_in = pyqtSignal()
     user_logged_out = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.sound_manager = sound_manager
         self.current_user = None
         self.fdb = FirebaseCRUD()
         self.settings = QSettings("Th1nkItThr0", "Dr1veThr0")
@@ -41,12 +42,12 @@ class AuthHandler(QMainWindow):
         self.stacked_widget = QStackedWidget(self)
         self.setCentralWidget(self.stacked_widget)
 
-        self.login_page = UserAuth(self)
-        self.register_page = Register(self)
-        self.user_page = UserPage(self)
-        self.forgot_password_page = ForgotPassword(self)
-        self.change_email_page = ChangeEmail(self)
-        self.change_password_page = ChangePassword(self)
+        self.login_page = UserAuth(self, sound_manager=self.sound_manager)
+        self.register_page = Register(self, sound_manager=self.sound_manager)
+        self.user_page = UserPage(self, sound_manager=self.sound_manager)
+        self.forgot_password_page = ForgotPassword(self, sound_manager=self.sound_manager)
+        self.change_email_page = ChangeEmail(self, sound_manager=self.sound_manager)
+        self.change_password_page = ChangePassword(self, sound_manager=self.sound_manager)
 
 
         self.stacked_widget.addWidget(self.login_page)
