@@ -5,18 +5,18 @@ import sys
 
 from src.core.logic.abstract_functions import get_resource_path
 from src.components.notification import show_notification
+from src.core.logic.firebase_crud import FirebaseCRUD
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
-from src.components.forgot_password import ForgotPassword
-from src.components.register import Register
 
-class UserAuth(QWidget):
+class Register(QWidget):
     def __init__(self, parent=None, sound_manager=None):
         super().__init__(parent)
         self.parent = parent
         self.sound_manager = sound_manager
         self._setup_ui()
         self._initialize_elements()
+        self.fdb = FirebaseCRUD()
 
     def _setup_ui(self):
         self.main_widget = QWidget()
@@ -30,23 +30,28 @@ class UserAuth(QWidget):
             main_container_layout.setContentsMargins(0, 0, 0, 0)
             self.setLayout(main_container_layout)
 
-    def login_fn(self, email, password):
-        res = self.parent.fdb.login_user(email, password)
-        if isinstance(res, dict) and 'idToken' in res:
-            show_notification("Success", f"Login successful for {res.get('displayName', 'User')}")
-            self.parent.set_current_user(res)
-            self.parent.user_page.update_user_data()
-            self.parent.switch_to_user_page()
-            self.parent.user_logged_in.emit()
+    def register_fn(self, username, email, password, confirm_password):
+        if not username or not email or not password or not confirm_password:
+            show_notification("Error", "Please fill in all fields.")
+            return
+        
+        if password != confirm_password:
+            show_notification("Error", "Passwords do not match.")
+            return
+        if not email.__contains__("@") and not email.__contains__("."):
+            show_notification("Error", "Please enter a valid email address.")
+            return
+
+        if len(password) < 6:
+            show_notification("Error", "Password must be at least 6 characters long.")
+            return
+
+        res = self.fdb.register_user(username, email, password)
+        if res is not None:
+            show_notification("Success", f"Registration successful for {username}")
+            self.parent.switch_to_login()
         else:
-            error_msg = res if isinstance(res, str) else "Login failed. Please check your credentials."
-            show_notification("Error", error_msg)
-
-    def register_fn(self):
-        self.parent.switch_to_register()
-
-    def forgot_password_fn(self):
-        self.parent.switch_to_forgot_password()
+            show_notification("Error", "Registration failed. Please try again.")
 
     def back(self):
         self.parent.exit_widget()
@@ -66,7 +71,7 @@ class UserAuth(QWidget):
         central_layout.setContentsMargins(20, 20, 20, 20)
         central_layout.setSpacing(20)
 
-        self.title_label = OverlayLabel("Sign In")
+        self.title_label = OverlayLabel("Sign Up")
         font = QFont("Comic Sans MS", 24, QFont.Weight.Bold)
         self.title_label.setFont(font)
         self.title_label.setTextColor("white")
@@ -78,7 +83,7 @@ class UserAuth(QWidget):
         user_icon.setPixmap(QPixmap(path).scaled(24, 24))
         username_layout.addWidget(user_icon, stretch=0)
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Email")
+        self.username_input.setPlaceholderText("Username")
         self.username_input.setStyleSheet("""
             QLineEdit {
                 background-color: #333;
@@ -94,6 +99,29 @@ class UserAuth(QWidget):
         dummy_label.setFixedWidth(24)
         username_layout.addWidget(dummy_label, stretch=0)
         central_layout.addLayout(username_layout)
+
+        email_layout = QHBoxLayout()
+        email_icon = QLabel()
+        path = get_resource_path("img/email.svg")
+        email_icon.setPixmap(QPixmap(path).scaled(24, 24))
+        email_layout.addWidget(email_icon, stretch=0)
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("Email")
+        self.email_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 10px;
+                padding: 5px;
+                font-family: "Comic Sans MS";
+            }
+        """)
+        email_layout.addWidget(self.email_input, stretch=1)
+        dummy_label_email = QLabel()
+        dummy_label_email.setFixedWidth(24)
+        email_layout.addWidget(dummy_label_email, stretch=0)
+        central_layout.addLayout(email_layout)
 
         password_layout = QHBoxLayout()
         lock_icon = QLabel()
@@ -123,19 +151,50 @@ class UserAuth(QWidget):
         password_layout.addWidget(self.visibility_icon, stretch=0)
         central_layout.addLayout(password_layout)
 
-        login_button = OverlayButton("Log in", sound_manager=self.sound_manager)
-        login_button.clicked.connect(lambda: self.login_fn(self.username_input.text(), self.password_input.text()))
-        central_layout.addWidget(login_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        confirm_password_layout = QHBoxLayout()
+        lock_icon_confirm = QLabel()
+        path = get_resource_path("img/password.svg")
+        lock_icon_confirm.setPixmap(QPixmap(path).scaled(24, 24))
+        confirm_password_layout.addWidget(lock_icon_confirm, stretch=0)
+        self.confirm_password_input = QLineEdit()
+        self.confirm_password_input.setPlaceholderText("Confirm Password")
+        self.confirm_password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.confirm_password_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 10px;
+                padding: 5px;
+                font-family: "Comic Sans MS";
+            }
+        """)
+        confirm_password_layout.addWidget(self.confirm_password_input, stretch=1)
+        self.confirm_visibility_icon = QLabel()
+        self.confirm_visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
+        self.confirm_visibility_icon.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.confirm_visibility_icon.mousePressEvent = self.toggle_confirm_password_visibility
+        confirm_password_layout.addWidget(self.confirm_visibility_icon, stretch=0)
+        central_layout.addLayout(confirm_password_layout)
+
+        register_button = OverlayButton("Register", sound_manager=self.sound_manager)
+        register_button.clicked.connect(lambda: self.register_fn(
+            self.username_input.text(), 
+            self.email_input.text(), 
+            self.password_input.text(), 
+            self.confirm_password_input.text()
+        ))
+        central_layout.addWidget(register_button, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addStretch()
 
-        forgot_layout = QVBoxLayout()
-        forgot_layout.addStretch()
-        forgot_button = OverlayButton("Forgot Password?", sound_manager=self.sound_manager)
-        forgot_button.setFlat(True)
-        font = forgot_button.font()
+        login_layout = QVBoxLayout()
+        login_layout.addStretch()
+        login_button = OverlayButton("Already have an account? Sign In", sound_manager=self.sound_manager)
+        login_button.setFlat(True)
+        font = login_button.font()
         font.setUnderline(True)
-        forgot_button.setFont(font)
-        forgot_button.setStyleSheet("""
+        login_button.setFont(font)
+        login_button.setStyleSheet("""
             OverlayButton {
                 background-color: transparent;
                 color: lightblue;
@@ -146,13 +205,9 @@ class UserAuth(QWidget):
                 color: skyblue;
             }
         """)
-        forgot_button.clicked.connect(self.forgot_password_fn)
-        forgot_layout.addWidget(forgot_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        central_layout.addLayout(forgot_layout)
-
-        register_button = OverlayButton("Register now", sound_manager=self.sound_manager)
-        register_button.clicked.connect(self.register_fn)
-        central_layout.addWidget(register_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        login_button.clicked.connect(self.login_fn)
+        login_layout.addWidget(login_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        central_layout.addLayout(login_layout)
 
         back_button = OverlayButton("Back", sound_manager=self.sound_manager)
         back_button.clicked.connect(self.back)
@@ -170,6 +225,9 @@ class UserAuth(QWidget):
         self.main_layout.addLayout(horizontal_layout)
         self.main_layout.addStretch(1)
 
+    def login_fn(self):
+        self.parent.switch_to_login()
+
     def toggle_password_visibility(self, event):
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
@@ -178,5 +236,15 @@ class UserAuth(QWidget):
             self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
 
+    def toggle_confirm_password_visibility(self, event):
+        if self.confirm_password_input.echoMode() == QLineEdit.EchoMode.Password:
+            self.confirm_password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.confirm_visibility_icon.setPixmap(QPixmap(self.visible_path).scaled(24, 24))
+        else:
+            self.confirm_password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.confirm_visibility_icon.setPixmap(QPixmap(self.invisible_path).scaled(24, 24))
+
     def mousePressEvent(self, event):
+        self.sound_manager.button_click.play()
+
         self.parent.hide()

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QInputDialog, QLineEdit, QLabel, QSpacerItem, QSizePolicy
 from PyQt6.QtGui import QFont, QPixmap, QColor
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from src.components.overlay_label import OverlayLabel
 from src.components.overlay_button import OverlayButton
@@ -60,11 +60,14 @@ class UserPage(QWidget):
         highscores_subtitle.setTextColor("white")
 
         self.scores_label = OverlayLabel("Loading...")
-        font = QFont("Comic Sans MS", 12, QFont.Weight.Light)
+        font = QFont("Comic Sans MS", 26, QFont.Weight.Light)       
         self.scores_label.setFont(font)
         self.scores_label.setTextColor("white")
+        self.scores_label.setStyleSheet("background-color: #333; padding: 10px; border-radius: 10px;")
         self.scores_label.setWordWrap(True)
         self.scores_label.setMinimumHeight(200)
+        self.scores_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)  # Explicitly set both
+        self.scores_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)  # Prevent vertical expansion
         
         email_subtitle = OverlayLabel("Email")
         font = QFont("Comic Sans MS", 14, QFont.Weight.Bold)
@@ -129,15 +132,17 @@ class UserPage(QWidget):
 
         logout_button = OverlayButton("Log Out", sound_manager=self.sound_manager)
         logout_button.clicked.connect(self.logout)
+        logout_button.setFixedWidth(200)
 
         back_button = OverlayButton("Back", sound_manager=self.sound_manager)
-        back_button.clicked.connect(self.back)        
+        back_button.clicked.connect(self.back) 
+        back_button.setFixedWidth(200)
 
         central_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addWidget(self.username_label, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addSpacerItem(QSpacerItem(0, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
         central_layout.addWidget(highscores_subtitle, alignment=Qt.AlignmentFlag.AlignHCenter)
-        central_layout.addWidget(self.scores_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        central_layout.addWidget(self.scores_label, alignment=Qt.AlignmentFlag.AlignCenter)
         central_layout.addSpacerItem(QSpacerItem(0, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
         central_layout.addWidget(email_subtitle, alignment=Qt.AlignmentFlag.AlignLeft)
         central_layout.addLayout(email_layout)
@@ -167,31 +172,38 @@ class UserPage(QWidget):
 
     def update_user_data(self):
         user = self.parent.get_current_user()
-        if user:
-            self.username_label.setText(user.get('displayName', user['email']))
-            self.email_input.setText(user['email'])
+        if user and self.parent.fdb:
+            # Fetch the latest user records from Firebase
             scores = self.parent.fdb.get_user_records(user['localId'])
             if scores:
+                user.update(scores)  # Merge Firebase records into current_user
+                self.username_label.setText(user.get('displayName', user['email']))
+                self.email_input.setText(user['email'])
                 scores_text = ""
                 for key, value in scores.items():
-                    if key.endswith("_highscore"):
-                        formatted_key = key.replace("_highscore", "").replace("_", " ").title()
+                    if key.endswith("_mode_highscore"):
+                        formatted_key = key.replace("_mode_highscore", "").replace("_", " ").title()
                         scores_text += f"{formatted_key}: {value}\n"
+                if not scores_text:
+                    scores_text = "No highscores available."
             else:
-                scores_text = "No scores available."
-            self.scores_label.setWordWrap(True)
-            self.scores_label.setMinimumHeight(200)
+                scores_text = "Unable to fetch highscores."
+                print("Warning: Failed to fetch user records from Firebase.")
             self.scores_label.setText(scores_text)
         else:
             self.username_label.setText("Not logged in")
             self.email_input.setText("Not logged in")
             self.scores_label.setText("Not logged in")
+            print("Warning: No user or FirebaseCRUD instance available.")
     
     def logout(self):
         self.parent.logout()
+        self.scores_label.setText("Not logged in")  # Clear scores on logout
 
     def back(self):
         self.parent.exit_widget()
 
     def mousePressEvent(self, event):
+        if self.sound_manager:
+            self.sound_manager.play_effect(self.sound_manager.button_click)
         self.parent.hide()

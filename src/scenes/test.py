@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
 from PyQt6.QtCore import Qt, QPoint, QTimer, QTime
-from PyQt6.QtMultimedia import QMediaPlayer
 
 from src.core.logic.abstract_functions import get_resource_path
 from src.components.overlay_label import OverlayLabel
@@ -19,14 +18,19 @@ from src.core.logic.elaborate_answer import ElaborateAnswer
 from .drivethru.whole_drivehtru_window import WholeDriveThruWindow
 from .kitchen.kitchen import Kitchen
 from src.components.camera import Camera_Widget
+from src.core.logic.sound_manager import SoundManager
 
 class Test(QWidget):
     def __init__(self, auth_handler, current_game_mode=None, sound_manager=None):
         super().__init__()
         self.auth_handler = auth_handler
-        self.current_game_mode = current_game_mode
-        self.sound_manager = sound_manager
+        self.current_game_mode = current_game_mode or "default"
+        self.sound_manager = sound_manager or SoundManager.get_instance()
         self.highscore = self.get_user_highscore()
+        self.game_ended = False  # Flag to prevent multiple highscore updates
+        self.correct_answers_count = 0
+        self.had_active_order = False
+        self.remaining_time = 0
         self._setup_screen()
         self._initialize_ui()
         self._setup_overlays()
@@ -53,7 +57,7 @@ class Test(QWidget):
         self.main_layout.addWidget(self.game_container)
 
     def _add_scenes(self):
-        self.scene1_widget = WholeDriveThruWindow(width=self.screen_width, height=self.screen_height)
+        self.scene1_widget = WholeDriveThruWindow(width=self.screen_width, height=self.screen_height, sound_manager=self.sound_manager)
         self.scene2_widget = Kitchen(width=self.screen_width, height=self.screen_height)
         self.stacked_layout.addWidget(self.scene1_widget)
         self.stacked_layout.addWidget(self.scene2_widget)
@@ -66,7 +70,7 @@ class Test(QWidget):
         self.customer_order = CustomerOrder(self)
         self.customer_order.move(350, 350)
         self.camera_widget = Camera_Widget(self)
-        self.elaborate_answer = ElaborateAnswer(self)
+        self.elaborate_answer = ElaborateAnswer(self, self.sound_manager)
         self.elaborate_answer.resize(self.screen_width, self.screen_height)
         self.validate_code_button = OverlayButton("Validate", parent=self, sound_manager=self.sound_manager)
         self.validate_code_button.resize(200, 60)
@@ -78,7 +82,6 @@ class Test(QWidget):
         self.change_button.resize(150, 100)
         self.timer_label = OverlayLabel("", parent=self, path=get_resource_path("img/timer.jpg"))
         self.timer_label.move(150, 50)
-        self.correct_answers_count = 0
         self.score_label = OverlayLabel(f"Score: {self.correct_answers_count}", parent=self, path=get_resource_path("img/timer.jpg"))
         self.score_label.move(self.screen_width - self.score_label.width() - 100, 50)
         self.game_playing = True
@@ -91,8 +94,6 @@ class Test(QWidget):
         self.game_start_time = QTime.currentTime()
 
     def _configure_initial_state(self):
-        self.had_active_order = False
-        self.remaining_time = 0
         self.camera_widget.hide()
         self.elaborate_answer.hide()
         self.validate_code_button.hide()
@@ -169,7 +170,7 @@ class Test(QWidget):
             self.timer_label.setText(f"Time: {self.paused_remaining_time:.1f}s")
             self.timer_label.update()
             self.scene1_widget.set_paused(True)
-            self.scene2_widget.set_paused(True)
+            self.scene2_widget.set_paused(False)
             self.update_timer.stop()
             self.scene1_widget.lower()
             self.scene2_widget.lower()
@@ -202,7 +203,7 @@ class Test(QWidget):
                 QTimer.singleShot(0, lambda: self.scene2_widget.setFocus())
             # Resume ticking sound when unpausing (if there's time remaining)
             if self.sound_manager and self.remaining_time > 0:
-                self.sound_manager.time_ticking.play()
+                self.sound_manager.play_effect(self.sound_manager.time_ticking)
         self.game_playing = not self.game_playing
 
     def back_to_menu(self):
@@ -243,7 +244,7 @@ class Test(QWidget):
             if self.correct_answers_count % 5 == 0 and self.correct_answers_count > 1 and self.current_game_mode:
                 self.update_orders()
                 self.had_active_order = False
-            else:
+            else: 
                 self.had_active_order = False
         if self.remaining_time <= 0:
             self.customer_order.hide()
@@ -253,6 +254,7 @@ class Test(QWidget):
         if self.daily_deals:
             self.daily_deals.create_daily_deals_list(self.current_game_mode)
             self.randomize_customer_order()
+            QTimer.singleShot(100, lambda: self.sound_manager.play_effect(self.sound_manager.daily_deals_update))
             print("Orders updated!")
 
     def randomize_customer_order(self):
@@ -276,14 +278,13 @@ class Test(QWidget):
                 self.had_active_order = True
                 # Play ticking sound if not already playing
                 if self.sound_manager and not self.sound_manager.time_ticking.isPlaying():
-                    self.sound_manager.time_ticking.play()
+                    self.sound_manager.play_effect(self.sound_manager.time_ticking)
             if self.remaining_time <= 0 and not self.elaborate_answer.isVisible() and previous_time > 0:
                 self.validate_current_code()
                 # Stop ticking sound
                 if self.sound_manager and self.sound_manager.time_ticking.isPlaying():
                     self.sound_manager.time_ticking.stop()
             self._update_scene_ui()
-
 
     def _update_scene_ui(self):
         if self.current_scene == "drive_thru":
@@ -349,13 +350,17 @@ class Test(QWidget):
             remaining_time=self.remaining_time,
             current_game_mode=self.current_game_mode
         )
-
     def get_user_highscore(self):
         user = self.auth_handler.get_current_user()
         if user:
             uid = user.get('localId') or user.get('uid')
             if uid:
-                return self.auth_handler.fdb.get_user_highscore_by_mode(uid, self.current_game_mode)
+                highscore = self.auth_handler.fdb.get_user_highscore_by_mode(uid, self.current_game_mode)
+                # Update current_user with latest highscore
+                if highscore is not None:
+                    highscore_key = f'{self.current_game_mode}_mode_highscore'
+                    self.auth_handler.current_user[highscore_key] = highscore
+                return highscore if highscore is not None else 999
         return 999
 
     def check_and_update_highscore(self):
@@ -364,12 +369,15 @@ class Test(QWidget):
         current_score = self.correct_answers_count
         game_mode = self.current_game_mode
         highscore_key = f'{game_mode}_mode_highscore'
-        print(highscore_key)
-        current_highscore = self.auth_handler.current_user.get(highscore_key, 0)
+        print(f"Checking highscore for {highscore_key}")
+        current_highscore = self.auth_handler.fdb.get_user_highscore_by_mode(
+            self.auth_handler.current_user['localId'], game_mode
+        )
         if current_score > current_highscore:
             uid = self.auth_handler.current_user['localId']
             email = self.auth_handler.current_user['email']
-            self.auth_handler.fdb.update_highscore(uid, game_mode, current_score, email)
+            self.auth_handler.fdb.update_highscore(uid, game_mode, current_score)
             self.auth_handler.current_user[highscore_key] = current_score
+            print(f"New highscore set for {game_mode}: {current_score}")
             return True
         return False

@@ -5,10 +5,11 @@ from src.core.logic.abstract_functions import get_resource_path
 from src.scenes.drivethru.drivethru import DriveThruGame
 
 class WholeDriveThruWindow(QWidget):
-    def __init__(self, parent=None, width=1280, height=960):
+    def __init__(self, parent=None, width=1280, height=960, sound_manager=None):
         super().__init__(parent)
         self.width = max(width, 1280)
         self.height = max(height, 960)
+        self.sound_manager = sound_manager
         self.setFixedSize(self.width, self.height)
         self.seconds_to_order = 20
         self.remaining_time = 0
@@ -23,7 +24,7 @@ class WholeDriveThruWindow(QWidget):
         self.setAutoFillBackground(True)
 
         # Initialize DriveThruGame
-        self.order_window = DriveThruGame(self, width=int(self.width * 0.406), height=int(self.height * 0.416))
+        self.order_window = DriveThruGame(self, width=int(self.width * 0.406), height=int(self.height * 0.416), sound_manager=self.sound_manager)
         self.order_window.move(
             int(self.width * 0.191),  # 22.8% from left
             int(self.height * 0.4)  # 51.1% from top

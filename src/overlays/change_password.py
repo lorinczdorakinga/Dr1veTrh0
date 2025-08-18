@@ -148,4 +148,5 @@ class ChangePassword(QWidget):
         self.parent.switch_to_user_page()
 
     def mousePressEvent(self, event):
+        self.sound_manager.button_click.play()
         self.parent.hide()

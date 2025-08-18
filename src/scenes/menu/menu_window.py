@@ -7,32 +7,35 @@ from src.scenes.menu.auth_handler import AuthHandler
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 from src.scenes.test import Test
-from src.overlays.game_modes import GameModes
+from src.components.game_modes import GameModes
+from src.overlays.settings import SettingsPage
 from src.overlays.help import Help
+from src.core.logic.sound_manager import SoundManager
 
 class Menu(QMainWindow):
     def __init__(self, sound_manager=None, parent=None):
         super().__init__(parent)
-        self.sound_manager = sound_manager
+        self.sound_manager = sound_manager or SoundManager.get_instance()
         self.auth_handler = AuthHandler(self, sound_manager=self.sound_manager)
         self._setup_ui()
         self._initialize_elements()
 
-        if self.sound_manager:
-            QTimer.singleShot(100, self._play_lobby_music)
-
         self.auth_handler.user_logged_in.connect(self.update_auth_button)
         self.auth_handler.user_logged_out.connect(self.update_auth_button)
-        
+
         self.showFullScreen()
+        if self.sound_manager.music_enabled:
+            QTimer.singleShot(500, self._play_lobby_music)
 
     def _play_lobby_music(self):
-        if self.sound_manager:
-            self.sound_manager.play_music(self.sound_manager.lobby_music)
-        else:
-            print("Warning: No SoundManager, cannot play lobby music")
+        self.sound_manager.play_music(self.sound_manager.lobby_music)
 
-    # ... (rest of the file unchanged, included for completeness)
+    def _play_in_game_music(self):
+        if self.sound_manager.music_enabled:
+            self.sound_manager.play_music(self.sound_manager.in_game_music)
+        else:
+            print("Music disabled, not playing in-game music")
+
     def _initialize_elements(self):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -73,6 +76,10 @@ class Menu(QMainWindow):
         self.game_modes_button.clicked.connect(self.game_modes_fn)
         self.game_modes_button.setFixedSize(button_width, button_height)
 
+        self.settings = OverlayButton("Settings", sound_manager=self.sound_manager, parent=self)
+        self.settings.clicked.connect(self.settings_fn)
+        self.settings.setFixedSize(button_width, button_height)
+
         self.help = OverlayButton("Help", sound_manager=self.sound_manager, parent=self)
         self.help.clicked.connect(self.help_fn)
         self.help.setFixedSize(button_width, button_height)
@@ -84,6 +91,7 @@ class Menu(QMainWindow):
         buttons_column_layout.addWidget(self.start)
         buttons_column_layout.addWidget(self.game_modes_button)
         buttons_column_layout.addWidget(self.help)
+        buttons_column_layout.addWidget(self.settings)
         buttons_column_layout.addWidget(self.quit)
         buttons_column_layout.addStretch()
 
@@ -98,8 +106,10 @@ class Menu(QMainWindow):
         self.credit.setFont(font)
 
         self.help_overlay = Help(self, sound_manager=self.sound_manager)
+        self.settings_overlay = SettingsPage(self, sound_manager=self.sound_manager)
         self.game_modes_overlay.hide()
         self.help_overlay.hide()
+        self.settings_overlay.hide()
 
         main_layout.addWidget(self.auth, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
         main_layout.addStretch(3)
@@ -154,10 +164,11 @@ class Menu(QMainWindow):
     def open_game_fn(self):
         print(f"Starting game with {self.current_game_mode} mode")
         print("Playing game_start.wav")
-        if self.sound_manager:
+        if self.sound_manager and self.sound_manager.sfx_enabled:
             self.sound_manager.stop_all()
             QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.game_start))
-            QTimer.singleShot(200, lambda: self.sound_manager.play_music(self.sound_manager.in_game_music))
+        if self.sound_manager and self.sound_manager.music_enabled:
+            QTimer.singleShot(200, self._play_in_game_music)
         self.game = Test(auth_handler=self.auth_handler, current_game_mode=self.current_game_mode, sound_manager=self.sound_manager)
         if hasattr(self.game, 'set_game_mode'):
             self.game.set_game_mode(self.current_game_mode)
@@ -179,7 +190,7 @@ class Menu(QMainWindow):
 
     def check_if_user_logged_in(self):
         if self.auth_handler.is_user_logged_in():
-            self.auth.setText("Already logged in")
+            self.auth.setText("My account")
             self.auth.clicked.connect(self.open_user_page)
         else:
             self.auth.setText("Log in / Sign up")
@@ -191,18 +202,24 @@ class Menu(QMainWindow):
         self.auth_handler.raise_()
         self.auth.setDefaultStyle()
 
+    def settings_fn(self):
+        if self.settings_overlay.isVisible():
+            self.settings_overlay.hide()
+        else:
+            self.settings_overlay.show()
+            self.settings_overlay.raise_()
+
     def help_fn(self):
         if self.help_overlay.isVisible():
             self.help_overlay.hide()
-            self.help.setDefaultStyle()
         else:
             self.help_overlay.show()
             self.help_overlay.raise_()
-            self.help.setChosenStyle()
 
     def quit_fn(self):
         print("Quitting...")
-        self.sound_manager.button_click.play()
+        if self.sound_manager and self.sound_manager.sfx_enabled:
+            self.sound_manager.play_effect(self.sound_manager.button_click)
         self.close()
         sys.exit()
 

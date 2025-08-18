@@ -1,15 +1,15 @@
 from PyQt6.QtWidgets import QMainWindow, QStackedWidget
-from PyQt6.QtCore import Qt, QSettings, pyqtSignal
+from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QTimer
 from PyQt6.QtGui import QPalette, QColor
 import pyrebase
 
 from src.core.logic.firebase_crud import FirebaseCRUD
-from src.components.login import UserAuth
-from src.components.user_page import UserPage
-from src.components.register import Register
-from src.components.forgot_password import ForgotPassword
-from src.components.change_password import ChangePassword
-from src.components.change_email import ChangeEmail
+from src.overlays.login import UserAuth
+from src.overlays.user_page import UserPage
+from src.overlays.register import Register
+from src.overlays.forgot_password import ForgotPassword
+from src.overlays.change_password import ChangePassword
+from src.overlays.change_email import ChangeEmail
 
 class AuthHandler(QMainWindow):
     user_logged_in = pyqtSignal()
@@ -49,7 +49,6 @@ class AuthHandler(QMainWindow):
         self.change_email_page = ChangeEmail(self, sound_manager=self.sound_manager)
         self.change_password_page = ChangePassword(self, sound_manager=self.sound_manager)
 
-
         self.stacked_widget.addWidget(self.login_page)
         self.stacked_widget.addWidget(self.forgot_password_page)
         self.stacked_widget.addWidget(self.register_page)
@@ -60,6 +59,8 @@ class AuthHandler(QMainWindow):
     def showEvent(self, event):
         if self.parent:
             self.setGeometry(self.parent.geometry())
+        if self.stacked_widget.currentWidget() == self.user_page:
+            self.user_page.update_user_data()  # Refresh user data when showing UserPage
         super().showEvent(event)
 
     def load_session(self):
@@ -78,8 +79,12 @@ class AuthHandler(QMainWindow):
                         'email': user_details['email'],
                         'displayName': user_details.get('displayName', '')
                     }
+                    # Fetch and merge highscores from Firebase
+                    records = self.fdb.get_user_records(user['localId'])
+                    if records:
+                        user.update(records)
                     self.set_current_user(user)
-                    self.user_page.update_user_data()  # Ensure data is updated on session load
+                    self.user_page.update_user_data()
                     self.switch_to_user_page()
                     self.user_logged_in.emit()
                 else:
@@ -96,15 +101,26 @@ class AuthHandler(QMainWindow):
     def set_current_user(self, user):
         self.current_user = user
         self.settings.setValue("refresh_token", user['refreshToken'])
+        # Update UserPage with new user data
+        if self.user_page:
+            self.user_page.update_user_data()
 
     def get_current_user(self):
-        return self.current_user
+        if self.current_user:
+            # Refresh user records to ensure latest highscores
+            records = self.fdb.get_user_records(self.current_user['localId'])
+            if records:
+                self.current_user.update(records)
+            return self.current_user
+        return None
 
     def logout(self):
         self.current_user = None
         self.settings.remove("refresh_token")
         self.switch_to_login()
+        self.user_page.update_user_data()  # Clear UserPage data on logout
         self.user_logged_out.emit()
+
     def is_user_logged_in(self):
         return self.current_user is not None and 'idToken' in self.current_user
 
@@ -119,6 +135,7 @@ class AuthHandler(QMainWindow):
 
     def switch_to_user_page(self):
         self.stacked_widget.setCurrentWidget(self.user_page)
+        self.user_page.update_user_data()
 
     def switch_to_change_email(self):
         self.stacked_widget.setCurrentWidget(self.change_email_page)

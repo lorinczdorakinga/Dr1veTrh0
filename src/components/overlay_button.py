@@ -36,7 +36,6 @@ class OverlayButton(QPushButton):
             self.setDefaultStyle()
 
     def play_click_sound(self):
-        print("Playing button_click.wav")
         if self.sound_manager:
             try:
                 QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.button_click))

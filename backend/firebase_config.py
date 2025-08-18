@@ -394,9 +394,9 @@ from src.core.logic.firebase_crud import FirebaseCRUD
 from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 
-from src.components.login import Login
-from src.components.forgot_password import ForgotPassword
-from src.components.register import Register
+from src.overlays.login import Login
+from src.overlays.forgot_password import ForgotPassword
+from src.overlays.register import Register
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QStackedWidget, QLabel
 import sys

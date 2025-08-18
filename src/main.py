@@ -11,11 +11,17 @@ from dotenv import load_dotenv
 from firebase_admin import credentials, initialize_app, db
 from src.core.logic.sound_manager import SoundManager
 from PyQt6.QtWidgets import QApplication
+import logging
+
 
 def main():
     # Increase FFmpeg tolerance for MP3s
     os.environ['FFMPEG_ANALYZEDURATION'] = '10000000'
     os.environ['FFMPEG_PROBESIZE'] = '10000000'
+    os.environ['QT_LOGGING_RULES'] = 'qt.multimedia*=false'
+   
+    logging.getLogger('absl').setLevel(logging.ERROR)
+    logging.getLogger().setLevel(logging.ERROR)
 
     app = QApplication(sys.argv)
     load_dotenv()

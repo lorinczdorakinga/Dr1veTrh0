@@ -59,11 +59,14 @@ class FirebaseCRUD:
         except Exception as e:
             error_message = str(e)
             if "EMAIL_EXISTS" in error_message:
-                print("A user with this email already exists.")
+                show_notification("Error", "A user with this email already exists.")
             elif "INVALID_EMAIL" in error_message:
-                print("Invalid email format.")
+                show_notification("Error", "Invalid email format.")
             elif "WEAK_PASSWORD" in error_message:
-                print("Password is too weak.")
+                show_notification("Error", "Password is too weak. Must be at least 6 characters.")
+            else:
+                show_notification("Error", f"Failed to create user: {error_message}")
+            print(f"Error creating user: {error_message}")
             return None
 
     def register_user(self, username, email, password):
@@ -76,18 +79,22 @@ class FirebaseCRUD:
         try:
             user = self.client_auth.sign_in_with_email_and_password(email, password)
             return user
-        except Exception as error:
-            # error_json = e.args[1]
-            # error = json.loads(error_json)['error']['message']
+        except Exception as e:
+            try:
+                error_json = e.args[1]
+                error = json.loads(error_json)['error']['message']
+            except (IndexError, json.JSONDecodeError):
+                error = str(e)
             if error == "INVALID_PASSWORD":
-                return "Invalid password."
+                show_notification("Error", "Invalid password.")
             elif error == "EMAIL_NOT_FOUND":
-                return "Email not found."
+                show_notification("Error", "Email not found.")
             elif error == "USER_DISABLED":
-                return "This account has been disabled."
+                show_notification("Error", "This account has been disabled.")
             else:
-                return f"Login failed: {str(error)}"
-
+                show_notification("Error", f"Login failed: {error}")
+            print(f"Login error: {error}")
+            return None
 
     def refresh_user(self, refresh_token):
         try:
@@ -103,41 +110,51 @@ class FirebaseCRUD:
                 return None
         
     def reauthenticate_user(self, email, password):
-        """Re-authenticate user to refresh credentials"""
         try:
             user = self.client_auth.sign_in_with_email_and_password(email, password)
             return user
         except Exception as e:
             print(f"Re-authentication failed: {e}")
+            show_notification("Error", f"Re-authentication failed: {str(e)}")
             return None
 
     def get_account_info(self, id_token):
         try:
             return self.client_auth.get_account_info(id_token)
         except pyrebase.exceptions.HTTPError as e:
-            error_json = e.args[1]
-            error = json.loads(error_json)['error']['message']
+            try:
+                error_json = e.args[1]
+                error = json.loads(error_json)['error']['message']
+            except (IndexError, json.JSONDecodeError):
+                error = str(e)
             print(f"Failed to get account info: {error}")
+            show_notification("Error", f"Failed to get account info: {error}")
             return None
         except Exception as e:
             print(f"Failed to get account info: {e}")
+            show_notification("Error", f"Failed to get account info: {str(e)}")
             return None
+
     def search_by_username(self, username):
         try:
             users = self.ref.order_by_child("username").equal_to(username).get()
             return users
         except Exception as e:
+            print(f"Error searching by username: {e}")
+            show_notification("Error", f"Failed to search users: {str(e)}")
             return None
 
     def recover_password_by_email(self, email):
         try:
             self.client_auth.send_password_reset_email(email)
+            show_notification("Success", "Password reset email sent.")
             return True
         except Exception as e:
+            print(f"Error sending password reset email: {e}")
+            show_notification("Error", f"Failed to send password reset email: {str(e)}")
             return False
         
     def send_email_verification(self, id_token):
-        """Send email verification to current user"""
         import requests
         api_key = self.client_config['apiKey']
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}"
@@ -151,38 +168,46 @@ class FirebaseCRUD:
             result = response.json()
             
             if response.status_code == 200:
+                show_notification("Success", "Verification email sent.")
                 return True
             else:
-                print(f"Email verification error: {result.get('error', {}).get('message', 'Unknown error')}")
+                error_message = result.get('error', {}).get('message', 'Unknown error')
+                print(f"Email verification error: {error_message}")
+                show_notification("Error", f"Email verification failed: {error_message}")
                 return False
         except Exception as e:
             print(f"Request error: {str(e)}")
+            show_notification("Error", f"Request error: {str(e)}")
             return False
         
     def get_user_highscore_by_mode(self, uid, game_mode):
-        """Get specific highscore for a user and game mode"""
         try:
             user_ref = db.reference(f'users/{uid}')
             user_data = user_ref.get()
             if user_data:
                 highscore_key = f'{game_mode}_mode_highscore'
-                return user_data.get(highscore_key, 0)
+                highscore = user_data.get(highscore_key, 0)
+                print(f"Fetched highscore for {game_mode}: {highscore}")
+                return highscore
+            print(f"No user data found for UID: {uid}")
             return 0
         except Exception as e:
             print(f"Error getting user highscore: {e}")
+            show_notification("Error", f"Failed to fetch highscore: {str(e)}")
             return 0
 
-    def update_highscore(self, uid, game_mode, score, email):
+    def update_highscore(self, uid, game_mode, score):
         try:
-            user = auth.get_user_by_email(email)
-            user_ref = db.reference(f'users/{user.uid}')
+            user_ref = db.reference(f'users/{uid}')
             current_data = user_ref.get()
-            current_score = current_data.get(f'{game_mode}_highscore', 0)
+            highscore_key = f'{game_mode}_mode_highscore'
+            current_score = current_data.get(highscore_key, 0) if current_data else 0
             if score > current_score:
-                user_ref.update({f'{game_mode}_mode_highscore': score})
+                user_ref.update({highscore_key: score})
                 print(f"Updated {game_mode} highscore for user {uid}: {score}")
         except Exception as e:
             print(f"Error updating highscore: {e}")
+            show_notification("Error", f"Failed to update highscore: {str(e)}")
 
     def update_user_email(self, id_token, new_email):
         import requests
@@ -195,13 +220,16 @@ class FirebaseCRUD:
             result = response.json()
             
             if response.status_code == 200:
+                show_notification("Success", "Email updated successfully.")
                 return result
             else:
-                # Log the specific error for debugging
-                print(f"Firebase error: {result.get('error', {}).get('message', 'Unknown error')}")
+                error_message = result.get('error', {}).get('message', 'Unknown error')
+                print(f"Firebase error: {error_message}")
+                show_notification("Error", f"Failed to update email: {error_message}")
                 return None
         except Exception as e:
             print(f"Request error: {str(e)}")
+            show_notification("Error", f"Request error: {str(e)}")
             return None
 
     def update_user_password(self, id_token, new_password):
@@ -215,21 +243,27 @@ class FirebaseCRUD:
             result = response.json()
             
             if response.status_code == 200:
+                show_notification("Success", "Password updated successfully.")
                 return result
             else:
-                # Log the specific error for debugging
-                print(f"Firebase error: {result.get('error', {}).get('message', 'Unknown error')}")
+                error_message = result.get('error', {}).get('message', 'Unknown error')
+                print(f"Firebase error: {error_message}")
+                show_notification("Error", f"Failed to update password: {error_message}")
                 return None
         except Exception as e:
             print(f"Request error: {str(e)}")
+            show_notification("Error", f"Request error: {str(e)}")
             return None
 
     def get_user_records(self, uid):
         try:
             user_ref = db.reference(f'users/{uid}')
-            return user_ref.get()
+            records = user_ref.get()
+            print(f"Fetched user records for UID {uid}: {records}")
+            return records
         except Exception as e:
             print(f"Error getting user records: {e}")
+            show_notification("Error", f"Failed to fetch user records: {str(e)}")
             return None
         
     def refresh_id_token(self, refresh_token):
@@ -245,37 +279,16 @@ class FirebaseCRUD:
             response = requests.post(url, json=payload)
             if response.status_code == 200:
                 result = response.json()
+                print(f"Refreshed token for user: {result.get('user_id')}")
                 return {
                     'idToken': result['id_token'],
                     'refreshToken': result['refresh_token']
                 }
+            else:
+                error_message = response.json().get('error', {}).get('message', 'Unknown error')
+                print(f"Token refresh error: {error_message}")
+                return None
         except Exception as e:
             print(f"Token refresh error: {str(e)}")
-        
-        return None
-    def ensure_valid_token(self, user_data, email=None, password=None):
-        """
-        Ensures we have a valid token, refreshing if possible or requiring re-auth
-        Returns: (valid_token, updated_user_data) or (None, None) if re-auth needed
-        """
-        if not user_data or 'idToken' not in user_data:
-            return None, None
-        
-        # First, try to refresh the existing token
-        if 'refreshToken' in user_data:
-            refresh_result = self.refresh_user(user_data['refreshToken'])
-            
-            if refresh_result and refresh_result != "TOKEN_EXPIRED":
-                # Successfully refreshed
-                user_data['idToken'] = refresh_result['idToken']
-                user_data['refreshToken'] = refresh_result['refreshToken']
-                return refresh_result['idToken'], user_data
-            elif refresh_result == "TOKEN_EXPIRED":
-                print("Refresh token expired. Need to re-authenticate.")
-                # If we have email and password, try to re-authenticate
-                if email and password:
-                    reauth_result = self.reauthenticate_user(email, password)
-                    if reauth_result:
-                        return reauth_result['idToken'], reauth_result
-        
-        return None, None
+            show_notification("Error", f"Token refresh failed: {str(e)}")
+            return None

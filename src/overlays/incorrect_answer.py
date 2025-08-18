@@ -9,10 +9,11 @@ from src.components.overlay_button import OverlayButton
 from src.components.overlay_label import OverlayLabel
 
 class IncorrectAnswerOverlay(QWidget):
-    def __init__(self, parent=None, true_code=None, current_code=None, highscore=False):
+    def __init__(self, parent=None, true_code=None, current_code=None, highscore=False, sound_manager=None):
         # Setup
         super().__init__(parent)
         self.highscore = highscore
+        self.sound_manager = sound_manager
         self.parent = parent
         self.width = self.parent.width() if self.parent else 1280
         self.height = self.parent.height() if self.parent else 960
@@ -113,9 +114,10 @@ class IncorrectAnswerOverlay(QWidget):
         self.current_code_label.setFont(font)
 
         if self.highscore:
-            self.highscore_label.show()
-            self.highscore_label.raise_()
-            QTimer.singleShot(10000, self.highscore_label.hide)
+            QTimer.singleShot(1000, lambda: self.highscore_label.show())
+            QTimer.singleShot(1000, lambda: self.highscore_label.raise_())
+            QTimer.singleShot(1000, lambda: self.sound_manager.play_effect(self.sound_manager.new_highscore))
+            QTimer.singleShot(10000, lambda: self.highscore_label.hide())
 
         if true_code and current_code:
 

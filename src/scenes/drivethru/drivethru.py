@@ -4,10 +4,11 @@ from PyQt6.QtGui import QPainter, QPixmap
 from src.core.logic.abstract_functions import get_resource_path
 
 class DriveThruGame(QWidget):
-    def __init__(self, parent=None, width=605, height=400):
+    def __init__(self, parent=None, width=605, height=400, sound_manager=None):
         super().__init__(parent)
         self.width = width
         self.height = height
+        self.sound_manager = sound_manager
         self.setFixedSize(self.width, self.height)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Allow clicks to pass through
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # Enable key events
@@ -57,8 +58,7 @@ class DriveThruGame(QWidget):
 
         middle_x = self.width / 2 - (self.car_image.width() / 2)
         if not self.middle_reached and middle_x - self.speed < self.x <= middle_x:
-            self.middle_reached = True
-            self.order_start_time = QTime.currentTime()
+            self.middle_reached_successfully()
 
         if not self.middle_reached and self.x > -self.car_image.width():
             self.x -= self.speed
@@ -67,16 +67,19 @@ class DriveThruGame(QWidget):
 
         self.update(self.seconds_to_order)
 
+    def middle_reached_successfully(self):
+        self.middle_reached = True
+        self.sound_manager.play_effect(self.sound_manager.car_arrival)        
+        self.sound_manager.customer_order.play()
+        self.order_start_time = QTime.currentTime()
+
     def keyPressEvent(self, event):
         """Handle key press events"""
-        if event.key() == Qt.Key.Key_Space:
+        if event.key() == Qt.Key.Key_Space and not self.middle_reached:
             middle_x = self.width / 2 - (self.car_image.width() / 2)
             self.x = middle_x
-            self.middle_reached = True
-            self.order_start_time = QTime.currentTime()
+            self.middle_reached_successfully()
             self.update(self.seconds_to_order)
-            if self.parent():  # Check if parent exists
-                self.parent().setFocus()  # Set focus to parent widget
 
     def process_events(self):
         """Process timer events"""
