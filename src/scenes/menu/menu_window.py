@@ -11,6 +11,7 @@ from src.components.game_modes import GameModes
 from src.overlays.settings import SettingsPage
 from src.overlays.help import Help
 from src.core.logic.sound_manager import SoundManager
+from src.components.notification import show_notification
 
 class Menu(QMainWindow):
     def __init__(self, sound_manager=None, parent=None):
@@ -164,16 +165,19 @@ class Menu(QMainWindow):
     def open_game_fn(self):
         print(f"Starting game with {self.current_game_mode} mode")
         print("Playing game_start.wav")
-        if self.sound_manager and self.sound_manager.sfx_enabled:
-            self.sound_manager.stop_all()
-            QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.game_start))
-        if self.sound_manager and self.sound_manager.music_enabled:
-            QTimer.singleShot(200, self._play_in_game_music)
-        self.game = Test(auth_handler=self.auth_handler, current_game_mode=self.current_game_mode, sound_manager=self.sound_manager)
-        if hasattr(self.game, 'set_game_mode'):
-            self.game.set_game_mode(self.current_game_mode)
-        self.game.showFullScreen()
-        self.close()
+        if self.auth_handler.is_user_logged_in():
+            if self.sound_manager and self.sound_manager.sfx_enabled:
+                self.sound_manager.stop_all()
+                QTimer.singleShot(0, lambda: self.sound_manager.play_effect(self.sound_manager.game_start))
+            if self.sound_manager and self.sound_manager.music_enabled:
+                QTimer.singleShot(200, self._play_in_game_music)
+            self.game = Test(auth_handler=self.auth_handler, current_game_mode=self.current_game_mode, sound_manager=self.sound_manager)
+            if hasattr(self.game, 'set_game_mode'):
+                self.game.set_game_mode(self.current_game_mode)
+            self.game.showFullScreen()
+            self.close()
+        else:
+            show_notification("Error", "You must be logged in to start a game!", sound_manager=self.sound_manager)
 
     def game_modes_fn(self):
         print("Game Modes button clicked")
@@ -184,7 +188,7 @@ class Menu(QMainWindow):
             self.game_modes_overlay.set_active_mode(self.current_game_mode)
             self.game_modes_overlay.show()
             self.game_modes_overlay.raise_()
-            self.game_modes_button.setChosenStyle()
+            # self.game_modes_button.setChosenStyle()
             self.game_modes_overlay.move(int(self.width * 0.25), int(self.height * 0.25))
             self.game_modes_overlay.resize(int(self.width * 0.25), int(self.height * 0.6))
 
@@ -230,7 +234,7 @@ class Menu(QMainWindow):
 
     def update_auth_button(self):
         if self.auth_handler.is_user_logged_in():
-            self.auth.setText("Already logged in")
+            self.auth.setText("My account")
             self.auth.clicked.disconnect()
             self.auth.clicked.connect(self.open_user_page)
         else:

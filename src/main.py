@@ -8,18 +8,21 @@ if project_root not in sys.path:
 
 # Now safe to import from src
 from dotenv import load_dotenv
-from firebase_admin import credentials, initialize_app, db
+load_dotenv()
+from firebase_admin import credentials, initialize_app
 from src.core.logic.sound_manager import SoundManager
 from PyQt6.QtWidgets import QApplication
+from backend.stripe_config import start_background_server 
 import logging
 
 
 def main():
+    start_background_server(port=3000)
     # Increase FFmpeg tolerance for MP3s
     os.environ['FFMPEG_ANALYZEDURATION'] = '10000000'
     os.environ['FFMPEG_PROBESIZE'] = '10000000'
     os.environ['QT_LOGGING_RULES'] = 'qt.multimedia*=false'
-   
+
     logging.getLogger('absl').setLevel(logging.ERROR)
     logging.getLogger().setLevel(logging.ERROR)
 

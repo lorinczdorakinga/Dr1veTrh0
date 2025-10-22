@@ -15,6 +15,8 @@ class UserPage(QWidget):
         self._setup_ui()
         self._initialize_elements()
 
+        # IF A USER DOES NOT HAVE A SUBSCRIPTION, LET A LAYER BE HERE TO PLAY AN AD TO BUY THE SUBSCRIPTION FOR NOW
+
     def _setup_ui(self):
         self.main_widget = QWidget(self)
         self.main_layout = QVBoxLayout(self.main_widget)

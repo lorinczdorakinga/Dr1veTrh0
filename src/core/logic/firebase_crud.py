@@ -53,7 +53,8 @@ class FirebaseCRUD:
                 'default_mode_highscore': 0,
                 'reverse_mode_highscore': 0,
                 'speedrun_mode_highscore': 0,
-                'double_trouble_mode_highscore': 0
+                'double_trouble_mode_highscore': 0,
+                'onetime_payment_made': False  
             })
             return user
         except Exception as e:
@@ -134,6 +135,16 @@ class FirebaseCRUD:
             print(f"Failed to get account info: {e}")
             show_notification("Error", f"Failed to get account info: {str(e)}")
             return None
+        
+    def mark_payment_made(self, uid):
+        try:
+            user_ref = db.reference(f'users/{uid}')
+            user_ref.update({'onetime_payment_made': True})
+            print(f"Payment marked for user {uid}")
+            return True
+        except Exception as e:
+            print(f"Error marking payment: {e}")
+            return False
 
     def search_by_username(self, username):
         try:

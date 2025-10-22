@@ -3,6 +3,7 @@ from PyQt6.QtGui import QFont, QPixmap, QPainter, QTransform
 from PyQt6.QtCore import Qt, QTimer
 from src.core.logic.abstract_functions import get_resource_path
 from src.core.logic.sound_manager import SoundManager
+from src.components.notification import show_notification
 
 class OverlayButton(QPushButton):
     def __init__(self, text=None, parent=None, path=None, sound_manager=None):
@@ -125,3 +126,26 @@ class OverlayButton(QPushButton):
             font-size: 22pt;
         }
         """)
+
+    def setDisabledStyle(self):
+        self.setStyleSheet("""
+        QPushButton {
+            background-color: rgba(150, 150, 150, 240);  /* Grayed-out background to indicate inactivity */
+            color: rgba(200, 200, 200, 255);  /* Dimmed text color */
+            border: 3px solid rgba(100, 100, 100, 255);  /* Subdued border */
+            border-radius: 5px;
+            padding: 10px;
+            font-family: "Comic Sans MS";
+            font-weight: bold;
+            font-size: 22pt;
+            cursor: not-allowed;  /* Change cursor to show it's disabled */
+        }
+        QPushButton:hover {
+            background-color: rgba(150, 150, 150, 240);  /* No change on hover */
+            border: 3px solid rgba(100, 100, 100, 255);
+        }
+        QPushButton:pressed {
+            background-color: rgba(150, 150, 150, 240);  /* No change on press */
+        }
+        """)
+        # Removed self.setEnabled(False) to allow clicks for showing notification

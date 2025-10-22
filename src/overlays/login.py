@@ -33,14 +33,14 @@ class UserAuth(QWidget):
     def login_fn(self, email, password):
         res = self.parent.fdb.login_user(email, password)
         if isinstance(res, dict) and 'idToken' in res:
-            show_notification("Success", f"Login successful for {res.get('displayName', 'User')}")
+            show_notification("Success", f"Login successful for {res.get('displayName', 'User')}", sound_manager=self.sound_manager)
             self.parent.set_current_user(res)
             self.parent.user_page.update_user_data()
             self.parent.switch_to_user_page()
             self.parent.user_logged_in.emit()
         else:
             error_msg = res if isinstance(res, str) else "Login failed. Please check your credentials."
-            show_notification("Error", error_msg)
+            show_notification("Error", error_msg, sound_manager=self.sound_manager)
 
     def register_fn(self):
         self.parent.switch_to_register()

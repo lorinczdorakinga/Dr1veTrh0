@@ -32,26 +32,26 @@ class Register(QWidget):
 
     def register_fn(self, username, email, password, confirm_password):
         if not username or not email or not password or not confirm_password:
-            show_notification("Error", "Please fill in all fields.")
+            show_notification("Error", "Please fill in all fields.", sound_manager=self.sound_manager)
             return
         
         if password != confirm_password:
             show_notification("Error", "Passwords do not match.")
             return
         if not email.__contains__("@") and not email.__contains__("."):
-            show_notification("Error", "Please enter a valid email address.")
+            show_notification("Error", "Please enter a valid email address.", sound_manager=self.sound_manager)
             return
 
         if len(password) < 6:
-            show_notification("Error", "Password must be at least 6 characters long.")
+            show_notification("Error", "Password must be at least 6 characters long.", sound_manager=self.sound_manager)
             return
 
         res = self.fdb.register_user(username, email, password)
         if res is not None:
-            show_notification("Success", f"Registration successful for {username}")
+            show_notification("Success", f"Registration successful for {username}", sound_manager=self.sound_manager)
             self.parent.switch_to_login()
         else:
-            show_notification("Error", "Registration failed. Please try again.")
+            show_notification("Error", "Registration failed. Please try again.", sound_manager=self.sound_manager)
 
     def back(self):
         self.parent.exit_widget()

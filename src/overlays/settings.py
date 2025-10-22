@@ -194,7 +194,7 @@ class SettingsPage(QWidget):
         self.sound_manager.sfx_volume = self.sfx_slider.value() / 100.0
         self.settings.setValue("custom_time", self.custom_spinbox.value())
         self._apply_settings()
-        show_notification("Success", "Settings saved successfully.")
+        show_notification("Success", "Settings saved successfully.", sound_manager=self.sound_manager)
         self.initial_settings = {
             "music_enabled": self.music_checkbox.isChecked(),
             "music_volume": self.music_slider.value(),

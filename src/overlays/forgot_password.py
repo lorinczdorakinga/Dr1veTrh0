@@ -97,13 +97,13 @@ class ForgotPassword(QWidget):
         email = self.email_input.text().strip()
         
         if not email:
-            show_notification("Error", "Please enter your email address.")
+            show_notification("Error", "Please enter your email address.", sound_manager=self.sound_manager)
             return
         
         import re
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
-            show_notification("Error", "Please enter a valid email address.")
+            show_notification("Error", "Please enter a valid email address.", sound_manager=self.sound_manager)
             return
         
         try:
@@ -111,15 +111,15 @@ class ForgotPassword(QWidget):
             if success:
                 show_notification("Success", 
                     f"Password reset instructions have been sent to {email}. "
-                    "Please check your email and follow the instructions.")
+                    "Please check your email and follow the instructions.", sound_manager=self.sound_manager)
                 self.parent.switch_to_login()
             else:
                 show_notification("Error", 
                     "Unable to send reset email. Please verify your email address "
-                    "and ensure you have an account with us.")
+                    "and ensure you have an account with us.", sound_manager=self.sound_manager)
                 
         except Exception as e:
-            show_notification("Error", "An unexpected error occurred. Please try again later.")
+            show_notification("Error", "An unexpected error occurred. Please try again later.", sound_manager=self.sound_manager)
     
     def back(self):
         self.parent.switch_to_login()

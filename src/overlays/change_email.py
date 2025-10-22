@@ -96,7 +96,7 @@ class ChangeEmail(QWidget):
     def change_email_fn(self):
         new_email = self.new_email_input.text().strip()
         if not new_email:
-            show_notification("Error", "Please enter a new email address.")
+            show_notification("Error", "Please enter a new email address.", sound_manager=self.sound_manager)
             return
 
         user = self.parent.get_current_user()
@@ -112,23 +112,23 @@ class ChangeEmail(QWidget):
                     if 'refreshToken' in result:
                         user['refreshToken'] = result['refreshToken']
                     
-                    show_notification("Success", "Email updated successfully.")
+                    show_notification("Success", "Email updated successfully.", sound_manager=self.sound_manager)
                     self.back()
                 else:
-                    show_notification("Error", "Failed to update email.")
+                    show_notification("Error", "Failed to update email.", sound_manager=self.sound_manager)
             else:
                 verification_result = self.fdb.send_email_verification(user['idToken'])
                 
                 if verification_result == True:
                     show_notification("Verification Required", 
-                                    "A verification email has been sent to your current email. Please verify it and try again.")
+                                    "A verification email has been sent to your current email. Please verify it and try again.", sound_manager=self.sound_manager)
                 elif verification_result == "RATE_LIMITED":
                     show_notification("Rate Limited", 
-                                    "Too many verification attempts. Please wait 15-30 minutes before trying again, or check your email for existing verification messages.")
+                                    "Too many verification attempts. Please wait 15-30 minutes before trying again, or check your email for existing verification messages.", sound_manager=self.sound_manager)
                 else:
-                    show_notification("Error", "Failed to send verification email.")
+                    show_notification("Error", "Failed to send verification email.", sound_manager=self.sound_manager)
         else:
-            show_notification("Error", "Not logged in.")
+            show_notification("Error", "Not logged in.", sound_manager=self.sound_manager)
 
     def back(self):
         self.parent.switch_to_user_page()

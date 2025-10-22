@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QStackedWidget
-from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, QSettings, pyqtSignal
 from PyQt6.QtGui import QPalette, QColor
-import pyrebase
 
 from src.core.logic.firebase_crud import FirebaseCRUD
 from src.overlays.login import UserAuth
@@ -129,7 +128,7 @@ class AuthHandler(QMainWindow):
 
     def switch_to_register(self):
         self.stacked_widget.setCurrentWidget(self.register_page)
-    
+
     def switch_to_forgot_password(self):
         self.stacked_widget.setCurrentWidget(self.forgot_password_page)
 

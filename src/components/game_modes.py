@@ -3,6 +3,8 @@ from PyQt6.QtCore import Qt, pyqtSignal, QEvent, QSize
 from PyQt6.QtGui import QPalette, QColor
 from src.components.overlay_button import OverlayButton
 from src.core.logic.sound_manager import SoundManager
+from src.core.logic.abstract_functions import did_user_pay
+from src.components.paywall_notification import show_paywall_notification
 
 class GameModes(QWidget):
     mode_selected = pyqtSignal(str)
@@ -12,6 +14,7 @@ class GameModes(QWidget):
         self.parent = parent
         self.sound_manager = sound_manager or SoundManager.get_instance(parent)
         self.active_mode = None
+        self.payed_user = did_user_pay()
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAutoFillBackground(True)
         self.setPalette(QPalette(QColor(0, 0, 0, 0)))
@@ -29,6 +32,10 @@ class GameModes(QWidget):
         buttons_column = QWidget()
         buttons_column_layout = QVBoxLayout(buttons_column)
         buttons_column_layout.setSpacing(20)
+        if self.parent:    
+            parent_rect = self.parent.geometry()
+            self.resize(parent_rect.width(), parent_rect.height())
+            self.move(0, 0)
 
         self.mode_buttons = {
             "default": OverlayButton("Default", parent=self, sound_manager=self.sound_manager),
@@ -50,6 +57,16 @@ class GameModes(QWidget):
         self.set_active_mode("default")
 
     def _handle_mode_click(self, mode):
+        if mode in ["reverse", "double_trouble", "speedrun"] and not self.payed_user:
+            result = show_paywall_notification(
+                "Error",
+                "You need to purchase this feature to access it.",
+                parent=self.parent
+            )
+            print("User chose:", result)
+            if result == 'imin':
+                self.payed_user = True; self.reset_button_styles()
+            return
         if self.active_mode != mode:
             self._apply_mode(mode)
             self.mode_selected.emit(mode)
@@ -64,8 +81,13 @@ class GameModes(QWidget):
         self.active_mode = mode
 
     def reset_button_styles(self):
-        for button in self.mode_buttons.values():
-            button.setDefaultStyle()
+        if not self.payed_user:
+            self.mode_buttons["default"].setDefaultStyle()
+            for mode in ["reverse", "double_trouble", "speedrun"]:
+                self.mode_buttons[mode].setDisabledStyle()
+        else:
+            for button in self.mode_buttons.values():
+                button.setDefaultStyle()
 
     def eventFilter(self, obj, event):
         if obj == self and event.type() == QEvent.Type.MouseButtonPress:

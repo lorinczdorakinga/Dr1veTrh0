@@ -121,7 +121,7 @@ class ChangePassword(QWidget):
         current_password = self.current_password_input.text()
         new_password = self.new_password_input.text()
         if not current_password or not new_password:
-            show_notification("Error", "Please enter both current and new passwords.")
+            show_notification("Error", "Please enter both current and new passwords.", sound_manager=self.sound_manager)
             return
 
         user = self.parent.get_current_user()
@@ -135,14 +135,14 @@ class ChangePassword(QWidget):
                     if 'refreshToken' in result:
                         user['refreshToken'] = result['refreshToken']
                     
-                    show_notification("Success", "Password updated successfully.")
+                    show_notification("Success", "Password updated successfully.", sound_manager=self.sound_manager)
                     self.back()
                 else:
-                    show_notification("Error", "Failed to update password.")
+                    show_notification("Error", "Failed to update password.", sound_manager=self.sound_manager)
             else:
-                show_notification("Error", "Current password is incorrect.")
+                show_notification("Error", "Current password is incorrect.", sound_manager=self.sound_manager)
         else:
-            show_notification("Error", "Not logged in.")
+            show_notification("Error", "Not logged in.", sound_manager=self.sound_manager)
 
     def back(self):
         self.parent.switch_to_user_page()
